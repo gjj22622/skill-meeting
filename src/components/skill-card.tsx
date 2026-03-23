@@ -7,10 +7,11 @@ interface SkillCardProps {
   selected?: boolean;
   onSelect?: () => void;
   onDelete?: () => void;
+  onPublish?: () => void;
   selectable?: boolean;
 }
 
-export default function SkillCard({ skill, selected, onSelect, onDelete, selectable }: SkillCardProps) {
+export default function SkillCard({ skill, selected, onSelect, onDelete, onPublish, selectable }: SkillCardProps) {
   return (
     <div
       className={`card ${selectable ? 'cursor-pointer' : ''}`}
@@ -39,15 +40,26 @@ export default function SkillCard({ skill, selected, onSelect, onDelete, selecta
             ))}
           </div>
         </div>
-        {onDelete && !skill.isDefault && (
-          <button
-            onClick={(e) => { e.stopPropagation(); onDelete(); }}
-            style={{ color: 'var(--danger)', background: 'none', border: 'none', cursor: 'pointer', fontSize: '1.25rem' }}
-            title="刪除"
-          >
-            ✕
-          </button>
-        )}
+        <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+          {onPublish && !skill.isDefault && (
+            <button
+              onClick={(e) => { e.stopPropagation(); onPublish(); }}
+              style={{ color: 'var(--accent)', background: 'none', border: '1px solid var(--accent)', borderRadius: '0.375rem', cursor: 'pointer', fontSize: '0.75rem', padding: '0.25rem 0.5rem' }}
+              title="發佈到市集"
+            >
+              📤 發佈
+            </button>
+          )}
+          {onDelete && !skill.isDefault && (
+            <button
+              onClick={(e) => { e.stopPropagation(); onDelete(); }}
+              style={{ color: 'var(--danger)', background: 'none', border: 'none', cursor: 'pointer', fontSize: '1.25rem' }}
+              title="刪除"
+            >
+              ✕
+            </button>
+          )}
+        </div>
       </div>
     </div>
   );
