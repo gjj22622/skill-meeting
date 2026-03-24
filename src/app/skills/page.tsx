@@ -1,12 +1,14 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { Skill } from '@/lib/types';
 import { getAllSkills, saveCustomSkill, deleteCustomSkill } from '@/lib/skill-store';
 import SkillCard from '@/components/skill-card';
 import SkillForm from '@/components/skill-form';
 
 export default function SkillsPage() {
+  const router = useRouter();
   const [skills, setSkills] = useState<Skill[]>([]);
   const [showForm, setShowForm] = useState(false);
   const [showImport, setShowImport] = useState(false);
@@ -64,6 +66,9 @@ export default function SkillsPage() {
           <button className="btn-secondary" onClick={() => { setShowImport(!showImport); setShowForm(false); }}>
             📄 匯入 JSON
           </button>
+          <a href="/marketplace" className="btn-secondary" style={{ textDecoration: 'none' }}>
+            🏪 從市集安裝
+          </a>
           <button className="btn-primary" onClick={() => { setShowForm(!showForm); setShowImport(false); }}>
             + 建立 Skill
           </button>
@@ -99,7 +104,12 @@ export default function SkillsPage() {
       {/* Skill list */}
       <div style={{ display: 'grid', gap: '1rem' }}>
         {skills.map((skill) => (
-          <SkillCard key={skill.id} skill={skill} onDelete={() => handleDelete(skill.id)} />
+          <SkillCard
+            key={skill.id}
+            skill={skill}
+            onDelete={() => handleDelete(skill.id)}
+            onPublish={() => router.push(`/marketplace/publish?from=${skill.id}`)}
+          />
         ))}
       </div>
     </div>

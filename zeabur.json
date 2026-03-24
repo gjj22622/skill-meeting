@@ -1,0 +1,22 @@
+{
+  "$schema": "https://schema.zeabur.app/template.json",
+  "build": {
+    "type": "nodejs",
+    "build_command": "npm run build",
+    "start_command": "PORT=3000 node .next/standalone/server.js",
+    "node_version": "20"
+  },
+  "runtime": {
+    "port": 3000,
+    "restart_policy": {
+      "condition": "on-failure",
+      "max_retries": 3
+    }
+  },
+  "environment": {
+    "ANTHROPIC_API_KEY": {
+      "description": "Anthropic API Key for Claude AI",
+      "required": true
+    }
+  }
+}
