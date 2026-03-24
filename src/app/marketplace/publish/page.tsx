@@ -2,65 +2,60 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { SkillCategory, SKILL_CATEGORIES, PublishSkillData } from '@/lib/marketplace-types';
+import { SkillCategory, SKILL_CATEGORIES } from '@/lib/marketplace-types';
+import { publishSkillLocally } from '@/lib/marketplace-client-store';
 
 export default function PublishPage() {
   const router = useRouter();
-  const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
 
-  const [form, setForm] = useState<PublishSkillData>({
-    name: '',
-    avatar: '🧠',
-    expertise: [],
-    personality: '',
-    prompt: '',
-    signature: { style: '---\n{name}\n🎯 專長：{expertise}' },
-    description: '',
-    category: 'other',
-    tags: [],
-    authorName: '',
-    price: 0,
-    currency: 'TWD',
-  });
-
-  const [expertiseInput, setExpertiseInput] = useState('');
+  const [name, setName] = useState('');
+  const [avatar, setAvatar] = useState('🧠');
+  const [authorName, setAuthorName] = useState('');
+  const [category, setCategory] = useState<SkillCategory>('other');
   const [tagsInput, setTagsInput] = useState('');
+  const [expertiseInput, setExpertiseInput] = useState('');
+  const [personality, setPersonality] = useState('');
+  const [prompt, setPrompt] = useState('');
+  const [signatureStyle, setSignatureStyle] = useState('---\n{name}\n專長：{expertise}');
+  const [description, setDescription] = useState('');
 
-  async function handleSubmit(e: React.FormEvent) {
+  function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError('');
 
-    if (!form.name || !form.prompt || !form.description || !form.authorName) {
+    if (!name || !prompt || !description || !authorName) {
       setError('請填寫所有必要欄位');
       return;
     }
 
-    setSubmitting(true);
     try {
-      const payload = {
-        ...form,
-        expertise: expertiseInput.split(/[,，]/).map((s) => s.trim()).filter(Boolean),
-        tags: tagsInput.split(/[,，]/).map((s) => s.trim()).filter(Boolean),
-      };
-
-      const res = await fetch('/api/marketplace/skills', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
+      const skill = publishSkillLocally({
+        name,
+        avatar,
+        expertise: expertiseInput.split(/[,，、]/).map((s) => s.trim()).filter(Boolean),
+        personality,
+        prompt,
+        signature: { style: signatureStyle },
+        description,
+        category,
+        tags: tagsInput.split(/[,，、]/).map((s) => s.trim()).filter(Boolean),
+        authorId: 'local-user',
+        authorName,
+        locale: 'zh-TW',
+        version: '1.0.0',
+        downloads: 0,
+        rating: 0,
+        reviewCount: 0,
+        price: 0,
+        currency: 'TWD',
+        status: 'published',
+        featured: false,
+        isDefault: false,
       });
-
-      if (!res.ok) {
-        const data = await res.json();
-        throw new Error(data.error || '發佈失敗');
-      }
-
-      const skill = await res.json();
       router.push(`/marketplace/skill/${skill.id}`);
     } catch (err) {
       setError(err instanceof Error ? err.message : '發佈失敗');
-    } finally {
-      setSubmitting(false);
     }
   }
 
@@ -71,14 +66,13 @@ export default function PublishPage() {
       </a>
 
       <h1 style={{ fontSize: '1.5rem', fontWeight: 700, marginBottom: '0.5rem' }}>
-        📤 發佈 Skill 到市集
+        發佈 Skill 到市集
       </h1>
       <p style={{ color: 'var(--text-secondary)', marginBottom: '1.5rem' }}>
         將你的 AI 角色分享給所有人使用
       </p>
 
       <form onSubmit={handleSubmit}>
-        {/* 基本資訊 */}
         <div className="card" style={{ marginBottom: '1rem' }}>
           <h2 style={{ fontSize: '1.1rem', fontWeight: 600, marginBottom: '1rem' }}>基本資訊</h2>
 
@@ -89,8 +83,8 @@ export default function PublishPage() {
               </label>
               <input
                 className="input-field"
-                value={form.avatar}
-                onChange={(e) => setForm({ ...form, avatar: e.target.value })}
+                value={avatar}
+                onChange={(e) => setAvatar(e.target.value)}
                 style={{ textAlign: 'center', fontSize: '1.5rem' }}
               />
             </div>
@@ -100,8 +94,8 @@ export default function PublishPage() {
               </label>
               <input
                 className="input-field"
-                value={form.name}
-                onChange={(e) => setForm({ ...form, name: e.target.value })}
+                value={name}
+                onChange={(e) => setName(e.target.value)}
                 placeholder="例：策略顧問"
               />
             </div>
@@ -113,8 +107,8 @@ export default function PublishPage() {
             </label>
             <input
               className="input-field"
-              value={form.authorName}
-              onChange={(e) => setForm({ ...form, authorName: e.target.value })}
+              value={authorName}
+              onChange={(e) => setAuthorName(e.target.value)}
               placeholder="你的名稱或組織名稱"
             />
           </div>
@@ -126,8 +120,8 @@ export default function PublishPage() {
               </label>
               <select
                 className="input-field"
-                value={form.category}
-                onChange={(e) => setForm({ ...form, category: e.target.value as SkillCategory })}
+                value={category}
+                onChange={(e) => setCategory(e.target.value as SkillCategory)}
               >
                 {(Object.entries(SKILL_CATEGORIES) as [SkillCategory, string][]).map(([key, label]) => (
                   <option key={key} value={key}>{label}</option>
@@ -148,7 +142,6 @@ export default function PublishPage() {
           </div>
         </div>
 
-        {/* 角色設定 */}
         <div className="card" style={{ marginBottom: '1rem' }}>
           <h2 style={{ fontSize: '1.1rem', fontWeight: 600, marginBottom: '1rem' }}>角色設定</h2>
 
@@ -170,8 +163,8 @@ export default function PublishPage() {
             </label>
             <input
               className="input-field"
-              value={form.personality}
-              onChange={(e) => setForm({ ...form, personality: e.target.value })}
+              value={personality}
+              onChange={(e) => setPersonality(e.target.value)}
               placeholder="善於從全局角度思考，注重長期價值..."
             />
           </div>
@@ -182,8 +175,8 @@ export default function PublishPage() {
             </label>
             <textarea
               className="input-field"
-              value={form.prompt}
-              onChange={(e) => setForm({ ...form, prompt: e.target.value })}
+              value={prompt}
+              onChange={(e) => setPrompt(e.target.value)}
               placeholder="你是一位..."
               style={{ minHeight: '120px', fontFamily: 'monospace', fontSize: '0.85rem' }}
             />
@@ -195,46 +188,43 @@ export default function PublishPage() {
             </label>
             <input
               className="input-field"
-              value={form.signature.style}
-              onChange={(e) => setForm({ ...form, signature: { style: e.target.value } })}
+              value={signatureStyle}
+              onChange={(e) => setSignatureStyle(e.target.value)}
               placeholder="---\n{name} | 座右銘\n專長：{expertise}"
               style={{ fontFamily: 'monospace', fontSize: '0.85rem' }}
             />
           </div>
         </div>
 
-        {/* 市集描述 */}
         <div className="card" style={{ marginBottom: '1rem' }}>
           <h2 style={{ fontSize: '1.1rem', fontWeight: 600, marginBottom: '1rem' }}>市集描述</h2>
 
           <div>
             <label style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', display: 'block', marginBottom: '0.25rem' }}>
-              詳細描述 *（支援 Markdown）
+              詳細描述 *
             </label>
             <textarea
               className="input-field"
-              value={form.description}
-              onChange={(e) => setForm({ ...form, description: e.target.value })}
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
               placeholder="描述這個 Skill 的特色、適用場景、使用建議..."
               style={{ minHeight: '150px', fontSize: '0.85rem' }}
             />
           </div>
         </div>
 
-        {/* 錯誤訊息 */}
         {error && (
           <p style={{ color: 'var(--danger)', fontSize: '0.875rem', marginBottom: '1rem' }}>
             {error}
           </p>
         )}
 
-        {/* 提交 */}
         <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'flex-end' }}>
           <a href="/marketplace" className="btn-secondary" style={{ textDecoration: 'none' }}>
             取消
           </a>
-          <button className="btn-primary" type="submit" disabled={submitting}>
-            {submitting ? '發佈中...' : '📤 發佈到市集'}
+          <button className="btn-primary" type="submit">
+            發佈到市集
           </button>
         </div>
       </form>

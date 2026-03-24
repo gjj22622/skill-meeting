@@ -2,6 +2,7 @@
 
 import { useState, useEffect, use } from 'react';
 import { MarketplaceSkill, SKILL_CATEGORIES } from '@/lib/marketplace-types';
+import { getMarketplaceSkillById } from '@/lib/marketplace-client-store';
 import StarRating from '@/components/marketplace/star-rating';
 import InstallButton from '@/components/marketplace/install-button';
 
@@ -12,19 +13,9 @@ export default function SkillDetailPage({ params }: { params: Promise<{ id: stri
   const [showPrompt, setShowPrompt] = useState(false);
 
   useEffect(() => {
-    async function load() {
-      try {
-        const res = await fetch(`/api/marketplace/skills/${id}`);
-        if (!res.ok) throw new Error('Not found');
-        const data = await res.json();
-        setSkill(data);
-      } catch (err) {
-        console.error('載入 Skill 失敗', err);
-      } finally {
-        setLoading(false);
-      }
-    }
-    load();
+    const found = getMarketplaceSkillById(id);
+    setSkill(found || null);
+    setLoading(false);
   }, [id]);
 
   if (loading) {
@@ -38,7 +29,6 @@ export default function SkillDetailPage({ params }: { params: Promise<{ id: stri
   if (!skill) {
     return (
       <div style={{ textAlign: 'center', padding: '4rem' }}>
-        <p style={{ fontSize: '1.5rem', marginBottom: '0.5rem' }}>😔</p>
         <p style={{ color: 'var(--text-secondary)' }}>找不到此 Skill</p>
         <a href="/marketplace" className="btn-secondary" style={{ marginTop: '1rem', display: 'inline-block', textDecoration: 'none' }}>
           回到市集
@@ -49,12 +39,10 @@ export default function SkillDetailPage({ params }: { params: Promise<{ id: stri
 
   return (
     <div style={{ maxWidth: '800px', margin: '0 auto' }}>
-      {/* 返回連結 */}
       <a href="/marketplace" style={{ color: 'var(--text-secondary)', textDecoration: 'none', fontSize: '0.85rem', display: 'inline-block', marginBottom: '1rem' }}>
         ← 回到市集
       </a>
 
-      {/* 標題區 */}
       <div className="card" style={{ marginBottom: '1.5rem' }}>
         <div style={{ display: 'flex', alignItems: 'flex-start', gap: '1.5rem' }}>
           <div style={{ fontSize: '3rem' }}>{skill.avatar}</div>
@@ -84,7 +72,7 @@ export default function SkillDetailPage({ params }: { params: Promise<{ id: stri
             <div style={{ display: 'flex', alignItems: 'center', gap: '1.5rem', marginBottom: '1rem' }}>
               <StarRating rating={skill.rating} reviewCount={skill.reviewCount} size="md" />
               <span style={{ color: 'var(--text-secondary)', fontSize: '0.9rem' }}>
-                ⬇ {skill.downloads} 下載
+                {skill.downloads} 下載
               </span>
             </div>
 
@@ -99,7 +87,6 @@ export default function SkillDetailPage({ params }: { params: Promise<{ id: stri
         </div>
       </div>
 
-      {/* 描述 */}
       <div className="card" style={{ marginBottom: '1.5rem' }}>
         <h2 style={{ fontSize: '1.1rem', fontWeight: 600, marginBottom: '0.75rem' }}>介紹</h2>
         <div style={{ color: 'var(--text-secondary)', lineHeight: 1.7, whiteSpace: 'pre-wrap' }}>
@@ -107,7 +94,6 @@ export default function SkillDetailPage({ params }: { params: Promise<{ id: stri
         </div>
       </div>
 
-      {/* 人設 & 專長 */}
       <div className="card" style={{ marginBottom: '1.5rem' }}>
         <h2 style={{ fontSize: '1.1rem', fontWeight: 600, marginBottom: '0.75rem' }}>角色設定</h2>
         <div style={{ marginBottom: '1rem' }}>
@@ -128,7 +114,6 @@ export default function SkillDetailPage({ params }: { params: Promise<{ id: stri
         </div>
       </div>
 
-      {/* System Prompt 預覽 */}
       <div className="card" style={{ marginBottom: '1.5rem' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
           <h2 style={{ fontSize: '1.1rem', fontWeight: 600 }}>System Prompt</h2>
@@ -156,7 +141,6 @@ export default function SkillDetailPage({ params }: { params: Promise<{ id: stri
         )}
       </div>
 
-      {/* 簽名預覽 */}
       <div className="card">
         <h2 style={{ fontSize: '1.1rem', fontWeight: 600, marginBottom: '0.75rem' }}>簽名樣式</h2>
         <pre style={{

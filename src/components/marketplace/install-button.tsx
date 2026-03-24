@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { Skill } from '@/lib/types';
 import { saveCustomSkill, getAllSkills } from '@/lib/skill-store';
+import { getMarketplaceSkillById } from '@/lib/marketplace-client-store';
 
 interface InstallButtonProps {
   skillId: string;
@@ -12,8 +13,7 @@ interface InstallButtonProps {
 export default function InstallButton({ skillId, skillName }: InstallButtonProps) {
   const [status, setStatus] = useState<'idle' | 'installing' | 'installed' | 'error'>('idle');
 
-  async function handleInstall() {
-    // 檢查是否已安裝
+  function handleInstall() {
     const existing = getAllSkills();
     if (existing.some((s) => s.id === skillId)) {
       setStatus('installed');
@@ -22,10 +22,20 @@ export default function InstallButton({ skillId, skillName }: InstallButtonProps
 
     setStatus('installing');
     try {
-      const res = await fetch(`/api/marketplace/skills/${skillId}/install`, { method: 'POST' });
-      if (!res.ok) throw new Error('安裝失敗');
-      const data = await res.json();
-      saveCustomSkill(data.skill as Skill);
+      const marketplaceSkill = getMarketplaceSkillById(skillId);
+      if (!marketplaceSkill) throw new Error('找不到此 Skill');
+
+      const skill: Skill = {
+        id: marketplaceSkill.id,
+        name: marketplaceSkill.name,
+        avatar: marketplaceSkill.avatar,
+        expertise: marketplaceSkill.expertise,
+        personality: marketplaceSkill.personality,
+        prompt: marketplaceSkill.prompt,
+        signature: marketplaceSkill.signature,
+        isDefault: false,
+      };
+      saveCustomSkill(skill);
       setStatus('installed');
     } catch {
       setStatus('error');
@@ -36,7 +46,7 @@ export default function InstallButton({ skillId, skillName }: InstallButtonProps
   if (status === 'installed') {
     return (
       <button className="btn-secondary" disabled style={{ opacity: 0.7 }}>
-        ✓ 已安裝
+        已安裝
       </button>
     );
   }
@@ -59,7 +69,7 @@ export default function InstallButton({ skillId, skillName }: InstallButtonProps
 
   return (
     <button className="btn-primary" onClick={handleInstall}>
-      ⬇ 安裝 {skillName}
+      安裝 {skillName}
     </button>
   );
 }
