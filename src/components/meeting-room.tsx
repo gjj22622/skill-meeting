@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { Meeting, Skill, DiscussionEvent, MeetingMessage, MeetingReport, DiscussionPhase } from '@/lib/types';
+import { saveMeeting } from '@/lib/skill-store';
 import ChatBubble from './chat-bubble';
 import ReportViewer from './report-viewer';
 
@@ -44,6 +45,8 @@ export default function MeetingRoom({ meeting, skills }: MeetingRoomProps) {
     setError(null);
     setMessages([]);
     setReport(null);
+    // 更新會議狀態為進行中
+    saveMeeting({ ...meeting, status: 'in_progress' });
 
     try {
       const customSkills = skills.filter((s) => !s.isDefault);
@@ -140,7 +143,17 @@ export default function MeetingRoom({ meeting, skills }: MeetingRoomProps) {
         break;
 
       case 'report':
-        if (event.report) setReport(event.report);
+        if (event.report) {
+          setReport(event.report);
+          // 儲存完成的會議到 localStorage
+          const completedMeeting: Meeting = {
+            ...meeting,
+            status: 'completed',
+            report: event.report,
+            messages: event.report.fullTranscript,
+          };
+          saveMeeting(completedMeeting);
+        }
         break;
 
       case 'error':
