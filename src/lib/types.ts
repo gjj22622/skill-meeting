@@ -11,6 +11,7 @@ export interface Skill {
   prompt: string;
   signature: SkillSignature;
   isDefault?: boolean;
+  isActive?: boolean;
 }
 
 export type MeetingGoal = 'consensus' | 'explore' | 'brainstorm';

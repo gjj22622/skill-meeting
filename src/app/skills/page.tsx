@@ -3,9 +3,11 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Skill } from '@/lib/types';
-import { getAllSkills, saveCustomSkill, deleteCustomSkill } from '@/lib/skill-store';
+import { getAllSkills, saveCustomSkill, deleteCustomSkill, toggleDefaultSkill } from '@/lib/skill-store';
 import SkillCard from '@/components/skill-card';
 import SkillForm from '@/components/skill-form';
+
+type FilterType = 'all' | 'active' | 'sostac' | 'custom';
 
 export default function SkillsPage() {
   const router = useRouter();
@@ -14,6 +16,8 @@ export default function SkillsPage() {
   const [showImport, setShowImport] = useState(false);
   const [importJson, setImportJson] = useState('');
   const [importError, setImportError] = useState('');
+  const [filter, setFilter] = useState<FilterType>('all');
+  const [search, setSearch] = useState('');
 
   useEffect(() => {
     setSkills(getAllSkills());
@@ -30,6 +34,11 @@ export default function SkillsPage() {
       deleteCustomSkill(id);
       setSkills(getAllSkills());
     }
+  }
+
+  function handleToggle(id: string) {
+    toggleDefaultSkill(id);
+    setSkills(getAllSkills());
   }
 
   function handleImport() {
@@ -55,12 +64,36 @@ export default function SkillsPage() {
     }
   }
 
+  const filteredSkills = skills.filter((s) => {
+    // Search filter
+    if (search) {
+      const q = search.toLowerCase();
+      const match = s.name.toLowerCase().includes(q)
+        || s.personality.toLowerCase().includes(q)
+        || s.expertise.some((e) => e.toLowerCase().includes(q));
+      if (!match) return false;
+    }
+    // Type filter
+    switch (filter) {
+      case 'active': return s.isActive !== false;
+      case 'sostac': return s.id?.startsWith('sostac-');
+      case 'custom': return !s.isDefault;
+      default: return true;
+    }
+  });
+
+  const activeCount = skills.filter((s) => s.isActive !== false).length;
+  const sostacCount = skills.filter((s) => s.id?.startsWith('sostac-')).length;
+  const customCount = skills.filter((s) => !s.isDefault).length;
+
   return (
     <div>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
         <div>
           <h1 style={{ fontSize: '1.75rem', fontWeight: 700 }}>Skill 管理</h1>
-          <p style={{ color: 'var(--text-secondary)', marginTop: '0.25rem' }}>管理你的 AI 討論角色</p>
+          <p style={{ color: 'var(--text-secondary)', marginTop: '0.25rem' }}>
+            共 {skills.length} 個角色，{activeCount} 個啟用中
+          </p>
         </div>
         <div style={{ display: 'flex', gap: '0.75rem' }}>
           <button className="btn-secondary" onClick={() => { setShowImport(!showImport); setShowForm(false); }}>
@@ -73,6 +106,42 @@ export default function SkillsPage() {
             + 建立 Skill
           </button>
         </div>
+      </div>
+
+      {/* Stats cards */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '0.75rem', marginBottom: '1.5rem' }}>
+        {([
+          { label: '全部', value: skills.length, f: 'all' as FilterType },
+          { label: '啟用中', value: activeCount, f: 'active' as FilterType },
+          { label: 'SOSTAC®', value: sostacCount, f: 'sostac' as FilterType },
+          { label: '自訂', value: customCount, f: 'custom' as FilterType },
+        ]).map((stat) => (
+          <div
+            key={stat.f}
+            className="card"
+            onClick={() => setFilter(stat.f)}
+            style={{
+              cursor: 'pointer',
+              textAlign: 'center',
+              padding: '0.75rem',
+              borderColor: filter === stat.f ? 'var(--accent)' : undefined,
+            }}
+          >
+            <div style={{ fontSize: '1.5rem', fontWeight: 700 }}>{stat.value}</div>
+            <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>{stat.label}</div>
+          </div>
+        ))}
+      </div>
+
+      {/* Search */}
+      <div style={{ marginBottom: '1rem' }}>
+        <input
+          className="input-field"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          placeholder="🔍 搜尋 Skill 名稱、專長..."
+          style={{ maxWidth: '400px' }}
+        />
       </div>
 
       {/* Import JSON */}
@@ -103,14 +172,20 @@ export default function SkillsPage() {
 
       {/* Skill list */}
       <div style={{ display: 'grid', gap: '1rem' }}>
-        {skills.map((skill) => (
+        {filteredSkills.map((skill) => (
           <SkillCard
             key={skill.id}
             skill={skill}
-            onDelete={() => handleDelete(skill.id)}
-            onPublish={() => router.push(`/marketplace/publish?from=${skill.id}`)}
+            onToggle={() => handleToggle(skill.id)}
+            onDelete={!skill.isDefault ? () => handleDelete(skill.id) : undefined}
+            onPublish={!skill.isDefault ? () => router.push(`/marketplace/publish?from=${skill.id}`) : undefined}
           />
         ))}
+        {filteredSkills.length === 0 && (
+          <div style={{ textAlign: 'center', padding: '3rem', color: 'var(--text-secondary)' }}>
+            沒有符合條件的 Skill
+          </div>
+        )}
       </div>
     </div>
   );

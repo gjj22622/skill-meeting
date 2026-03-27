@@ -4,6 +4,17 @@ import { v4 as uuidv4 } from 'uuid';
 
 const client = new Anthropic();
 
+function buildSkillContext(skill: Skill): string {
+  let context = `你現在是 ${skill.name}。\n你的背景：${skill.personality}\n你的專長：${skill.expertise.join('、')}`;
+  // Inject methodology knowledge when prompt is substantial (>100 chars)
+  if (skill.prompt && skill.prompt.length > 100) {
+    context += `\n\n你的專業知識與方法論：\n${skill.prompt}`;
+  } else if (skill.prompt) {
+    context += `\n\n${skill.prompt}`;
+  }
+  return context;
+}
+
 function buildSystemPrompt(skill: Skill, phase: DiscussionPhase, meeting: Meeting): string {
   const goalDescriptions = {
     consensus: '達成共識——找到所有人都能接受的結論',
@@ -11,7 +22,9 @@ function buildSystemPrompt(skill: Skill, phase: DiscussionPhase, meeting: Meetin
     brainstorm: '腦力激盪——產生盡可能多的創意想法',
   };
 
-  return `${skill.prompt}
+  const skillContext = buildSkillContext(skill);
+
+  return `${skillContext}
 
 你正在參加一場多人圓桌討論會議。
 - 主題：${meeting.topic}
@@ -22,6 +35,7 @@ ${meeting.sourceData ? `\n參考資料：\n${meeting.sourceData}` : ''}
 
 規則：
 - 保持你的角色特色和專業觀點
+- 運用你的專業知識與方法論來分析討論議題
 - 回應要簡潔有力（150-300字），不要冗長
 - 引用其他人的觀點時請指名
 - 提出具體且有建設性的意見

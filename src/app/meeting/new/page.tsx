@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Skill, Meeting, MeetingGoal } from '@/lib/types';
-import { getAllSkills, saveMeeting } from '@/lib/skill-store';
+import { getActiveSkills, saveMeeting } from '@/lib/skill-store';
 import SkillCard from '@/components/skill-card';
 import { v4 as uuidv4 } from 'uuid';
 
@@ -17,7 +17,7 @@ export default function NewMeetingPage() {
   const [goalType, setGoalType] = useState<MeetingGoal>('consensus');
 
   useEffect(() => {
-    setSkills(getAllSkills());
+    setSkills(getActiveSkills());
   }, []);
 
   function toggleSkill(id: string) {
