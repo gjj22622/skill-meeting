@@ -3,6 +3,7 @@
 import { useState, useRef } from 'react';
 import { Skill } from '@/lib/types';
 import { v4 as uuidv4 } from 'uuid';
+import { parseMdSkill } from '@/lib/parse-md-skill';
 
 interface SkillFormProps {
   onSave: (skill: Skill) => void;
@@ -51,7 +52,16 @@ export default function SkillForm({ onSave, onCancel, initial }: SkillFormProps)
 
     try {
       const content = await file.text();
-      setPrompt(content);
+      const parsed = parseMdSkill(content, file.name);
+
+      // Auto-fill all fields from parsed MD
+      if (parsed.name) setName(parsed.name);
+      if (parsed.avatar) setAvatar(parsed.avatar);
+      if (parsed.expertise) setExpertise(parsed.expertise);
+      if (parsed.personality) setPersonality(parsed.personality);
+      if (parsed.prompt) setPrompt(parsed.prompt);
+      if (parsed.signature) setSignatureStyle(parsed.signature);
+
       // Reset file input
       if (fileInputRef.current) {
         fileInputRef.current.value = '';

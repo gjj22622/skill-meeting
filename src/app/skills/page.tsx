@@ -6,6 +6,7 @@ import { Skill } from '@/lib/types';
 import { getAllSkills, saveCustomSkill, deleteCustomSkill, toggleDefaultSkill } from '@/lib/skill-store';
 import SkillCard from '@/components/skill-card';
 import SkillForm from '@/components/skill-form';
+import { parseMdSkill } from '@/lib/parse-md-skill';
 
 type FilterType = 'all' | 'active' | 'sostac' | 'custom';
 
@@ -78,16 +79,25 @@ export default function SkillsPage() {
 
     try {
       const content = await file.text();
-      // Create a new skill with the MD content as the prompt
+      const parsed = parseMdSkill(content, file.name);
+
       const skill: Skill = {
         id: crypto.randomUUID(),
-        name: file.name.replace(/\.md$/, '') || 'Skill',
-        avatar: '📄',
-        expertise: [''],
-        personality: '從檔案匯入的角色',
-        prompt: content,
-        signature: { style: '{name}' },
+        name: parsed.name || file.name.replace(/\.md$/, '') || 'Skill',
+        avatar: parsed.avatar || '📄',
+        expertise: parsed.expertise
+          ? parsed.expertise.split(/[、,，]/).map(s => s.trim()).filter(Boolean)
+          : [],
+        personality: parsed.personality || '',
+        prompt: parsed.prompt || content,
+        signature: { style: parsed.signature || '{name} | {expertise}' },
       };
+
+      if (!skill.name) {
+        setImportError('MD 檔案缺少名稱欄位');
+        return;
+      }
+
       saveCustomSkill(skill);
       setSkills(getAllSkills());
       // Reset file input
