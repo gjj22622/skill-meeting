@@ -243,6 +243,7 @@ export async function* runDiscussion(
     consensus: extractSection(summaryContent, '共識結論'),
     disagreements: extractSection(summaryContent, '分歧觀點'),
     openQuestions: extractSection(summaryContent, '待釐清問題'),
+    actionItems: extractSection(summaryContent, '行動建議'),
     signatures,
     fullTranscript: messages,
   };
@@ -252,8 +253,26 @@ export async function* runDiscussion(
 }
 
 function extractSection(content: string, sectionName: string): string {
-  const regex = new RegExp(`##\\s*${sectionName}[\\s\\S]*?(?=##|$)`, 'g');
-  const match = content.match(regex);
-  if (!match) return '';
-  return match[0].replace(new RegExp(`##\\s*${sectionName}\\s*`), '').trim();
+  const lines = content.split('\n');
+  let inSection = false;
+  const sectionLines: string[] = [];
+
+  for (const line of lines) {
+    const isHeading = /^#{1,4}\s/.test(line) || /^\*\*[^*]+\*\*\s*$/.test(line.trim());
+
+    if (isHeading && line.includes(sectionName)) {
+      inSection = true;
+      continue;
+    }
+
+    if (inSection && isHeading) {
+      break;
+    }
+
+    if (inSection) {
+      sectionLines.push(line);
+    }
+  }
+
+  return sectionLines.join('\n').trim();
 }

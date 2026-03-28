@@ -50,6 +50,7 @@ export interface MeetingReport {
   consensus: string;
   disagreements: string;
   openQuestions: string;
+  actionItems: string;
   signatures: string[];
   fullTranscript: MeetingMessage[];
 }

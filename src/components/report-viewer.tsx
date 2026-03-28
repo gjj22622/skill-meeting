@@ -57,6 +57,12 @@ export default function ReportViewer({ report }: ReportViewerProps) {
         <div style={{ lineHeight: 1.8, whiteSpace: 'pre-wrap' }}>{report.openQuestions || '（無）'}</div>
       </div>
 
+      {/* Action items */}
+      <div className="report-section">
+        <h3 style={{ fontWeight: 600, marginBottom: '0.75rem', color: '#10b981' }}>🎯 行動建議</h3>
+        <div style={{ lineHeight: 1.8, whiteSpace: 'pre-wrap' }}>{report.actionItems || '（無）'}</div>
+      </div>
+
       {/* Signatures */}
       <div className="report-section">
         <h3 style={{ fontWeight: 600, marginBottom: '1rem', color: 'var(--text-primary)' }}>✍️ 簽署</h3>

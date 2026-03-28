@@ -45,6 +45,12 @@ ${report.openQuestions || '（無）'}
 
 ---
 
+## 🎯 行動建議
+
+${report.actionItems || '（無）'}
+
+---
+
 ## 📝 完整對話記錄
 
 ${transcript}
