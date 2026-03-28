@@ -105,6 +105,13 @@ function initSchema(db: Database.Database) {
     db.exec('ALTER TABLE meetings ADD COLUMN duration_ms INTEGER DEFAULT 0');
   }
 
+  // Add is_active column to custom_skills (safe migration)
+  const customSkillCols = db.prepare("PRAGMA table_info(custom_skills)").all() as Array<{ name: string }>;
+  const customColNames = customSkillCols.map((c) => c.name);
+  if (!customColNames.includes('is_active')) {
+    db.exec('ALTER TABLE custom_skills ADD COLUMN is_active INTEGER DEFAULT 1');
+  }
+
   // Seed default skills from JSON if empty
   const count = db.prepare('SELECT COUNT(*) as c FROM default_skills').get() as { c: number };
   if (count.c === 0) {

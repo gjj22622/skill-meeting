@@ -4,6 +4,10 @@ import defaultSkills from '@/data/default-skills.json';
 const STORAGE_KEY = 'skill-meeting-skills';
 const DISABLED_KEY = 'skill-meeting-disabled';
 
+// ============================================================
+// localStorage helpers (fallback for unauthenticated users)
+// ============================================================
+
 export function getDefaultSkills(): Skill[] {
   return defaultSkills as Skill[];
 }
@@ -25,7 +29,7 @@ function saveDisabledIds(ids: Set<string>): void {
   localStorage.setItem(DISABLED_KEY, JSON.stringify([...ids]));
 }
 
-/** Toggle a default skill's active state */
+/** Toggle a default skill's active state (localStorage only) */
 export function toggleDefaultSkill(id: string): boolean {
   const disabled = getDisabledIds();
   if (disabled.has(id)) {
@@ -37,11 +41,12 @@ export function toggleDefaultSkill(id: string): boolean {
   return !disabled.has(id); // returns new isActive state
 }
 
-/** Get all skills with isActive status */
+/** Get all skills with isActive status (localStorage) */
 export function getAllSkills(): Skill[] {
   const disabled = getDisabledIds();
   const defaults = getDefaultSkills().map((s) => ({
     ...s,
+    isDefault: true,
     isActive: !disabled.has(s.id),
   }));
 
@@ -54,13 +59,13 @@ export function getAllSkills(): Skill[] {
   }
   try {
     const custom = JSON.parse(stored) as Skill[];
-    return [...defaults, ...custom.map((s) => ({ ...s, isActive: s.isActive !== false }))];
+    return [...defaults, ...custom.map((s) => ({ ...s, isDefault: false, isActive: s.isActive !== false }))];
   } catch {
     return defaults;
   }
 }
 
-/** Get only active skills (for meeting skill selection) */
+/** Get only active skills (localStorage, for meeting skill selection) */
 export function getActiveSkills(): Skill[] {
   return getAllSkills().filter((s) => s.isActive !== false);
 }
@@ -95,6 +100,76 @@ export function deleteCustomSkill(id: string): void {
 export function getSkillById(id: string): Skill | undefined {
   return getAllSkills().find((s) => s.id === id);
 }
+
+// ============================================================
+// API-backed functions (for authenticated users)
+// ============================================================
+
+/** Fetch all skills from API (defaults + user's custom) */
+export async function fetchSkillsFromApi(): Promise<Skill[]> {
+  try {
+    const res = await fetch('/api/skills', { credentials: 'include' });
+    if (!res.ok) return [];
+    return res.json();
+  } catch {
+    return [];
+  }
+}
+
+/** Create a custom skill via API */
+export async function createSkillViaApi(skill: Partial<Skill>): Promise<Skill | null> {
+  try {
+    const res = await fetch('/api/skills', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({
+        name: skill.name,
+        avatar: skill.avatar,
+        expertise: skill.expertise,
+        personality: skill.personality,
+        prompt: skill.prompt,
+        signature: skill.signature,
+      }),
+    });
+    if (!res.ok) return null;
+    return res.json();
+  } catch {
+    return null;
+  }
+}
+
+/** Toggle custom skill's is_active via API */
+export async function toggleCustomSkillApi(id: string, isActive: boolean): Promise<boolean> {
+  try {
+    const res = await fetch(`/api/skills/${id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({ is_active: isActive }),
+    });
+    return res.ok;
+  } catch {
+    return false;
+  }
+}
+
+/** Delete custom skill via API */
+export async function deleteSkillViaApi(id: string): Promise<boolean> {
+  try {
+    const res = await fetch(`/api/skills/${id}`, {
+      method: 'DELETE',
+      credentials: 'include',
+    });
+    return res.ok;
+  } catch {
+    return false;
+  }
+}
+
+// ============================================================
+// Meeting storage (localStorage — unchanged)
+// ============================================================
 
 const MEETING_KEY = 'skill-meeting-meetings';
 

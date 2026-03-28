@@ -32,13 +32,15 @@ export async function PATCH(
     const updates: string[] = [];
     const values: any[] = [];
 
-    const allowedFields = ['name', 'avatar', 'expertise', 'personality', 'prompt', 'signature'];
+    const allowedFields = ['name', 'avatar', 'expertise', 'personality', 'prompt', 'signature', 'is_active'];
 
     for (const field of allowedFields) {
       if (field in body) {
         updates.push(`${field} = ?`);
         if (field === 'expertise' || field === 'signature') {
           values.push(JSON.stringify(body[field]));
+        } else if (field === 'is_active') {
+          values.push(body[field] ? 1 : 0);
         } else {
           values.push(body[field]);
         }
@@ -60,6 +62,7 @@ export async function PATCH(
       expertise: JSON.parse(updated.expertise || '[]'),
       signature: JSON.parse(updated.signature || '{}'),
       isDefault: false,
+      isActive: updated.is_active !== 0,
     };
 
     return NextResponse.json(parsed, { status: 200 });

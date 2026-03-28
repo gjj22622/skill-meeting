@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Skill, Meeting, MeetingGoal } from '@/lib/types';
-import { getActiveSkills, saveMeeting } from '@/lib/skill-store';
+import { getActiveSkills, saveMeeting, fetchSkillsFromApi } from '@/lib/skill-store';
 import SkillCard from '@/components/skill-card';
 import { v4 as uuidv4 } from 'uuid';
 
@@ -17,7 +17,19 @@ export default function NewMeetingPage() {
   const [goalType, setGoalType] = useState<MeetingGoal>('consensus');
 
   useEffect(() => {
-    setSkills(getActiveSkills());
+    // Try API first (authenticated), fallback to localStorage
+    (async () => {
+      try {
+        const res = await fetch('/api/auth/me', { credentials: 'include' });
+        if (res.ok) {
+          const apiSkills = await fetchSkillsFromApi();
+          // Only show active skills
+          setSkills(apiSkills.filter((s) => s.isActive !== false));
+          return;
+        }
+      } catch {}
+      setSkills(getActiveSkills());
+    })();
   }, []);
 
   function toggleSkill(id: string) {

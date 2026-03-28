@@ -31,6 +31,7 @@ export async function GET(request: NextRequest) {
         expertise: JSON.parse(s.expertise || '[]'),
         signature: JSON.parse(s.signature || '{}'),
         isDefault: false,
+        isActive: s.is_active !== 0,
       }));
 
       return NextResponse.json([...parsed, ...customParsed], { status: 200 });
@@ -89,6 +90,7 @@ export async function POST(request: NextRequest) {
       expertise: JSON.parse(skill.expertise || '[]'),
       signature: JSON.parse(skill.signature || '{}'),
       isDefault: false,
+      isActive: true,
     };
 
     return NextResponse.json(parsed, { status: 201 });
