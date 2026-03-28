@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { Skill } from '@/lib/types';
 import { getAllSkills, saveCustomSkill, deleteCustomSkill, toggleDefaultSkill } from '@/lib/skill-store';
@@ -11,6 +11,7 @@ type FilterType = 'all' | 'active' | 'sostac' | 'custom';
 
 export default function SkillsPage() {
   const router = useRouter();
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [skills, setSkills] = useState<Skill[]>([]);
   const [showForm, setShowForm] = useState(false);
   const [showImport, setShowImport] = useState(false);
@@ -64,6 +65,40 @@ export default function SkillsPage() {
     }
   }
 
+  async function handleMdFileUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    setImportError('');
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Check file type
+    if (!file.name.endsWith('.md') && file.type !== 'text/markdown' && file.type !== 'text/plain') {
+      setImportError('只支援 .md 檔案');
+      return;
+    }
+
+    try {
+      const content = await file.text();
+      // Create a new skill with the MD content as the prompt
+      const skill: Skill = {
+        id: crypto.randomUUID(),
+        name: file.name.replace(/\.md$/, '') || 'Skill',
+        avatar: '📄',
+        expertise: [''],
+        personality: '從檔案匯入的角色',
+        prompt: content,
+        signature: { style: '{name}' },
+      };
+      saveCustomSkill(skill);
+      setSkills(getAllSkills());
+      // Reset file input
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
+    } catch (err) {
+      setImportError('無法讀取檔案');
+    }
+  }
+
   const filteredSkills = skills.filter((s) => {
     // Search filter
     if (search) {
@@ -96,6 +131,16 @@ export default function SkillsPage() {
           </p>
         </div>
         <div style={{ display: 'flex', gap: '0.75rem' }}>
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept=".md,text/markdown,text/plain"
+            onChange={handleMdFileUpload}
+            style={{ display: 'none' }}
+          />
+          <button className="btn-secondary" onClick={() => fileInputRef.current?.click()}>
+            📝 上傳 MD 檔案
+          </button>
           <button className="btn-secondary" onClick={() => { setShowImport(!showImport); setShowForm(false); }}>
             📄 匯入 JSON
           </button>

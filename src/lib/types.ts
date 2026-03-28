@@ -29,6 +29,8 @@ export interface Meeting {
   createdAt: string;
   messages: MeetingMessage[];
   report?: MeetingReport;
+  tokenUsage?: { input: number; output: number; total: number };
+  durationMs?: number;
 }
 
 export interface MeetingMessage {
@@ -65,4 +67,6 @@ export interface DiscussionEvent {
   content?: string;
   report?: MeetingReport;
   error?: string;
+  tokenUsage?: { input: number; output: number; total: number };
+  durationMs?: number;
 }

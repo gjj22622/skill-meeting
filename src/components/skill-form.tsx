@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { Skill } from '@/lib/types';
 import { v4 as uuidv4 } from 'uuid';
 
@@ -21,6 +21,8 @@ export default function SkillForm({ onSave, onCancel, initial }: SkillFormProps)
   const [signatureStyle, setSignatureStyle] = useState(
     initial?.signature.style || '{avatar} {name} | 我的座右銘\n📋 專長：{expertise}'
   );
+  const [uploadError, setUploadError] = useState('');
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -34,6 +36,29 @@ export default function SkillForm({ onSave, onCancel, initial }: SkillFormProps)
       signature: { style: signatureStyle },
     };
     onSave(skill);
+  }
+
+  async function handleFileUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    setUploadError('');
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Check file type
+    if (!file.name.endsWith('.md') && file.type !== 'text/markdown' && file.type !== 'text/plain') {
+      setUploadError('只支援 .md 檔案');
+      return;
+    }
+
+    try {
+      const content = await file.text();
+      setPrompt(content);
+      // Reset file input
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
+    } catch (err) {
+      setUploadError('無法讀取檔案');
+    }
   }
 
   return (
@@ -93,6 +118,24 @@ export default function SkillForm({ onSave, onCancel, initial }: SkillFormProps)
           角色提示詞
         </label>
         <textarea className="input-field" value={prompt} onChange={(e) => setPrompt(e.target.value)} placeholder="描述這個角色的背景、專業知識和回答風格..." required />
+        <div style={{ marginTop: '0.5rem', display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept=".md,text/markdown,text/plain"
+            onChange={handleFileUpload}
+            style={{ display: 'none' }}
+          />
+          <button
+            type="button"
+            className="btn-secondary"
+            onClick={() => fileInputRef.current?.click()}
+            style={{ fontSize: '0.875rem', padding: '0.5rem 0.75rem' }}
+          >
+            📄 上傳 MD 檔案
+          </button>
+          {uploadError && <span style={{ color: 'var(--danger)', fontSize: '0.875rem' }}>❌ {uploadError}</span>}
+        </div>
       </div>
 
       <div style={{ marginBottom: '1.5rem' }}>

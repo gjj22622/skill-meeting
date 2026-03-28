@@ -95,6 +95,9 @@ export async function* runDiscussion(
   skills: Skill[]
 ): AsyncGenerator<DiscussionEvent> {
   const messages: MeetingMessage[] = [];
+  const startTime = Date.now();
+  let totalInputTokens = 0;
+  let totalOutputTokens = 0;
 
   // Phase 1: Opening
   yield { type: 'phase', phase: 'opening' };
@@ -128,6 +131,13 @@ export async function* runDiscussion(
           content: event.delta.text,
         };
       }
+    }
+
+    // Track token usage
+    const finalMsg = await stream.finalMessage();
+    if (finalMsg.usage) {
+      totalInputTokens += finalMsg.usage.input_tokens || 0;
+      totalOutputTokens += finalMsg.usage.output_tokens || 0;
     }
 
     const msg: MeetingMessage = {
@@ -179,6 +189,13 @@ export async function* runDiscussion(
         }
       }
 
+      // Track token usage
+      const finalMsg = await stream.finalMessage();
+      if (finalMsg.usage) {
+        totalInputTokens += finalMsg.usage.input_tokens || 0;
+        totalOutputTokens += finalMsg.usage.output_tokens || 0;
+      }
+
       const msg: MeetingMessage = {
         id: msgId,
         skillId: skill.id,
@@ -225,7 +242,18 @@ export async function* runDiscussion(
     }
   }
 
+  // Track token usage from summary stream
+  const summaryFinalMsg = await summaryStream.finalMessage();
+  if (summaryFinalMsg.usage) {
+    totalInputTokens += summaryFinalMsg.usage.input_tokens || 0;
+    totalOutputTokens += summaryFinalMsg.usage.output_tokens || 0;
+  }
+
   yield { type: 'message_end', skillId: 'system' };
+
+  // Calculate duration
+  const endTime = Date.now();
+  const durationMs = endTime - startTime;
 
   // Generate signatures
   const signatures = skills.map((skill) => {
@@ -248,7 +276,15 @@ export async function* runDiscussion(
     fullTranscript: messages,
   };
 
-  yield { type: 'report', report };
+  const totalTokens = totalInputTokens + totalOutputTokens;
+  console.error(`[runDiscussion] Summary: input_tokens=${totalInputTokens}, output_tokens=${totalOutputTokens}, total=${totalTokens}, duration=${durationMs}ms`);
+
+  yield {
+    type: 'report',
+    report,
+    tokenUsage: { input: totalInputTokens, output: totalOutputTokens, total: totalTokens },
+    durationMs,
+  };
   yield { type: 'done' };
 }
 
@@ -258,21 +294,37 @@ function extractSection(content: string, sectionName: string): string {
   const sectionLines: string[] = [];
 
   for (const line of lines) {
-    const isHeading = /^#{1,4}\s/.test(line) || /^\*\*[^*]+\*\*\s*$/.test(line.trim());
+    const trimmed = line.trim();
 
+    // Check if this is a heading (various formats):
+    // - ## 共識結論 (with space)
+    // - ##共識結論 (no space)
+    // - ## 一、共識結論 or ## 1. 共識結論 (numbered)
+    // - 共識結論： (on its own with colon)
+    // - **共識結論** (bold)
+    // - ### **共識結論** (bold inside heading)
+    const isHeading =
+      /^#{1,6}\s*/.test(line) ||  // markdown heading (with or without space after #)
+      /^\*\*[^*]+\*\*\s*$/.test(trimmed) ||  // standalone bold
+      /^[^#*]*[\：:]\s*$/.test(trimmed);  // ends with colon
+
+    // Check if this heading contains the section name
     if (isHeading && line.includes(sectionName)) {
       inSection = true;
       continue;
     }
 
-    if (inSection && isHeading) {
+    // If we're in a section and hit another heading, end the section
+    if (inSection && isHeading && !line.includes(sectionName)) {
       break;
     }
 
-    if (inSection) {
+    if (inSection && trimmed) {  // Only add non-empty lines
       sectionLines.push(line);
     }
   }
 
-  return sectionLines.join('\n').trim();
+  const result = sectionLines.join('\n').trim();
+  console.error(`[extractSection] Looking for "${sectionName}" - found: "${result.substring(0, 100)}${result.length > 100 ? '...' : ''}"`);
+  return result;
 }

@@ -151,6 +151,8 @@ export default function MeetingRoom({ meeting, skills }: MeetingRoomProps) {
             status: 'completed',
             report: event.report,
             messages: event.report.fullTranscript,
+            tokenUsage: event.tokenUsage,
+            durationMs: event.durationMs,
           };
           saveMeeting(completedMeeting);
         }
