@@ -155,6 +155,24 @@ export default function MeetingRoom({ meeting, skills }: MeetingRoomProps) {
             durationMs: event.durationMs,
           };
           saveMeeting(completedMeeting);
+
+          // 同步到 SQLite（讓管理後台可以讀取）
+          fetch(`/api/meeting/${meeting.id}/save`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              topic: meeting.topic,
+              sourceData: meeting.sourceData,
+              skillIds: meeting.skillIds,
+              rounds: meeting.rounds,
+              goalType: meeting.goalType,
+              status: 'completed',
+              messages: event.report.fullTranscript,
+              report: event.report,
+              tokenUsage: event.tokenUsage,
+              durationMs: event.durationMs,
+            }),
+          }).catch((err) => console.error('Failed to sync meeting to DB:', err));
         }
         break;
 

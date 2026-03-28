@@ -28,11 +28,14 @@ export async function GET(request: NextRequest) {
       .get() as { count: number }
     const completedMeetings = completedMeetingsResult.count
 
-    // Get total token usage
+    // Get total token usage (combined)
     const totalTokensResult = db
-      .prepare('SELECT COALESCE(SUM(token_usage), 0) as total FROM meetings')
-      .get() as { total: number }
+      .prepare('SELECT COALESCE(SUM(token_usage), 0) as total, COALESCE(SUM(token_input), 0) as total_input, COALESCE(SUM(token_output), 0) as total_output, COALESCE(SUM(duration_ms), 0) as total_duration FROM meetings')
+      .get() as { total: number; total_input: number; total_output: number; total_duration: number }
     const totalTokenUsage = totalTokensResult.total
+    const totalTokenInput = totalTokensResult.total_input
+    const totalTokenOutput = totalTokensResult.total_output
+    const totalDurationMs = totalTokensResult.total_duration
 
     // Get recent meetings (last 7)
     const recentMeetings = db
@@ -60,6 +63,9 @@ export async function GET(request: NextRequest) {
       totalMeetings,
       completedMeetings,
       totalTokenUsage,
+      totalTokenInput,
+      totalTokenOutput,
+      totalDurationMs,
       recentMeetings,
       meetingsPerDay,
       topUsers,

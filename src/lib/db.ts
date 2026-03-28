@@ -92,6 +92,19 @@ function initSchema(db: Database.Database) {
     CREATE INDEX IF NOT EXISTS idx_audit_log_created ON audit_log(created_at);
   `);
 
+  // Add columns for token tracking and duration (safe to run multiple times)
+  const meetingColumns = db.prepare("PRAGMA table_info(meetings)").all() as Array<{ name: string }>;
+  const colNames = meetingColumns.map((c) => c.name);
+  if (!colNames.includes('token_input')) {
+    db.exec('ALTER TABLE meetings ADD COLUMN token_input INTEGER DEFAULT 0');
+  }
+  if (!colNames.includes('token_output')) {
+    db.exec('ALTER TABLE meetings ADD COLUMN token_output INTEGER DEFAULT 0');
+  }
+  if (!colNames.includes('duration_ms')) {
+    db.exec('ALTER TABLE meetings ADD COLUMN duration_ms INTEGER DEFAULT 0');
+  }
+
   // Seed default skills from JSON if empty
   const count = db.prepare('SELECT COUNT(*) as c FROM default_skills').get() as { c: number };
   if (count.c === 0) {

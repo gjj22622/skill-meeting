@@ -262,6 +262,9 @@ export async function* runDiscussion(
       .replace('{expertise}', skill.expertise.join('、'));
   });
 
+  // Log full summary for debugging
+  console.error(`[runDiscussion] Full summaryContent (${summaryContent.length} chars):\n${summaryContent}`);
+
   // Build report
   const report: MeetingReport = {
     topic: meeting.topic,
@@ -293,38 +296,53 @@ function extractSection(content: string, sectionName: string): string {
   let inSection = false;
   const sectionLines: string[] = [];
 
+  // Known section names to detect when a NEW section starts (so we stop collecting)
+  const ALL_SECTIONS = ['共識結論', '分歧觀點', '待釐清問題', '行動建議'];
+
   for (const line of lines) {
     const trimmed = line.trim();
-
-    // Check if this is a heading (various formats):
-    // - ## 共識結論 (with space)
-    // - ##共識結論 (no space)
-    // - ## 一、共識結論 or ## 1. 共識結論 (numbered)
-    // - 共識結論： (on its own with colon)
-    // - **共識結論** (bold)
-    // - ### **共識結論** (bold inside heading)
-    const isHeading =
-      /^#{1,6}\s*/.test(line) ||  // markdown heading (with or without space after #)
-      /^\*\*[^*]+\*\*\s*$/.test(trimmed) ||  // standalone bold
-      /^[^#*]*[\：:]\s*$/.test(trimmed);  // ends with colon
-
-    // Check if this heading contains the section name
-    if (isHeading && line.includes(sectionName)) {
-      inSection = true;
+    if (!trimmed) {
+      // Keep blank lines if we're already in a section (for formatting)
+      if (inSection) sectionLines.push('');
       continue;
     }
 
-    // If we're in a section and hit another heading, end the section
-    if (inSection && isHeading && !line.includes(sectionName)) {
+    // Check if this line is a "section header" for ANY known section.
+    // We use a very loose check: if the line contains one of our known section names
+    // and is "header-like" (short line, or starts with #, **, numbering, etc.)
+    const containsCurrentSection = trimmed.includes(sectionName);
+    const containsOtherSection = ALL_SECTIONS.some(
+      (s) => s !== sectionName && trimmed.includes(s)
+    );
+
+    // Detect if this line looks like a header for our target section
+    // Very loose: ANY line containing the section name that is ≤80 chars is treated as a header
+    if (containsCurrentSection && trimmed.length <= 80) {
+      inSection = true;
+      continue; // Skip the header line itself
+    }
+
+    // If we're in our section and hit a line containing another section name, stop
+    if (inSection && containsOtherSection && trimmed.length <= 80) {
       break;
     }
 
-    if (inSection && trimmed) {  // Only add non-empty lines
+    // Also stop if we hit a markdown heading (##) that doesn't contain our section name
+    if (inSection && /^#{1,6}\s+/.test(line) && !containsCurrentSection) {
+      break;
+    }
+
+    if (inSection) {
       sectionLines.push(line);
     }
   }
 
+  // Trim trailing empty lines
+  while (sectionLines.length > 0 && sectionLines[sectionLines.length - 1].trim() === '') {
+    sectionLines.pop();
+  }
+
   const result = sectionLines.join('\n').trim();
-  console.error(`[extractSection] Looking for "${sectionName}" - found: "${result.substring(0, 100)}${result.length > 100 ? '...' : ''}"`);
+  console.error(`[extractSection] "${sectionName}" => ${result.length} chars: "${result.substring(0, 150)}${result.length > 150 ? '...' : ''}"`);
   return result;
 }
