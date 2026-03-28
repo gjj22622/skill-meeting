@@ -1,10 +1,8 @@
+@"
 {
-  "$schema": "https://schema.zeabur.app/template.json",
+  "`$schema": "https://schema.zeabur.app/template.json",
   "build": {
-    "type": "nodejs",
-    "build_command": "npm run build",
-    "start_command": "PORT=3000 node .next/standalone/server.js",
-    "node_version": "20"
+    "type": "dockerfile"
   },
   "runtime": {
     "port": 3000,
@@ -20,3 +18,4 @@
     }
   }
 }
+"@ | Set-Content -Path zeabur.json -Encoding UTF8
