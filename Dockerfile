@@ -1,4 +1,4 @@
-FROM node:20-slim AS builder
+FROM node:22-slim AS builder
 WORKDIR /app
 COPY package.json package-lock.json ./
 ENV NODE_ENV=development
@@ -7,7 +7,7 @@ COPY . .
 RUN mkdir -p public
 RUN npm run build
 
-FROM node:20-slim AS runner
+FROM node:22-slim AS runner
 WORKDIR /app
 ENV NODE_ENV=production
 ENV PORT=3000
