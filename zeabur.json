@@ -1,6 +1,5 @@
-@"
-{
-  "`$schema": "https://schema.zeabur.app/template.json",
+'{
+  "$schema": "https://schema.zeabur.app/template.json",
   "build": {
     "type": "dockerfile"
   },
@@ -17,5 +16,4 @@
       "required": true
     }
   }
-}
-"@ | Set-Content -Path zeabur.json -Encoding UTF8
+}' | Out-File -FilePath zeabur.json -Encoding ascii
