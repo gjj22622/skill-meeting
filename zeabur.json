@@ -1,4 +1,4 @@
-'{
+{
   "$schema": "https://schema.zeabur.app/template.json",
   "build": {
     "type": "dockerfile"
@@ -16,4 +16,4 @@
       "required": true
     }
   }
-}' | Out-File -FilePath zeabur.json -Encoding ascii
+}
