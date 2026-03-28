@@ -37,7 +37,7 @@ export async function GET(request: NextRequest) {
     // Get recent meetings (last 7)
     const recentMeetings = db
       .prepare(
-        "SELECT id, title, user_id, status, created_at FROM meetings WHERE deleted_at IS NULL ORDER BY created_at DESC LIMIT 7"
+        "SELECT m.id, m.topic, m.user_id, m.status, m.created_at, u.name as user_name FROM meetings m LEFT JOIN users u ON m.user_id = u.id WHERE m.deleted_at IS NULL ORDER BY m.created_at DESC LIMIT 7"
       )
       .all()
 
