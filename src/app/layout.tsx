@@ -1,5 +1,7 @@
 import type { Metadata } from 'next';
 import './globals.css';
+import { AuthProvider } from '@/lib/auth-context';
+import NavAuth from '@/app/components/nav-auth';
 
 export const metadata: Metadata = {
   title: 'Skill Meeting - AI 圓桌討論',
@@ -10,37 +12,43 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="zh-TW">
       <body>
-        <nav
-          style={{
-            background: 'var(--bg-secondary)',
-            borderBottom: '1px solid var(--border)',
-            padding: '0.75rem 1.5rem',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '2rem',
-          }}
-        >
-          <a href="/" style={{ fontSize: '1.25rem', fontWeight: 700, textDecoration: 'none', color: 'var(--text-primary)' }}>
-            🏛️ Skill Meeting
-          </a>
-          <div style={{ display: 'flex', gap: '1.5rem' }}>
-            <a href="/" style={{ color: 'var(--text-secondary)', textDecoration: 'none', fontSize: '0.875rem' }}>
-              會議列表
-            </a>
-            <a href="/skills" style={{ color: 'var(--text-secondary)', textDecoration: 'none', fontSize: '0.875rem' }}>
-              Skill 管理
-            </a>
-            <a href="/marketplace" style={{ color: 'var(--text-secondary)', textDecoration: 'none', fontSize: '0.875rem' }}>
-              🏪 市集
-            </a>
-            <a href="/meeting/new" style={{ color: 'var(--text-secondary)', textDecoration: 'none', fontSize: '0.875rem' }}>
-              新會議
-            </a>
-          </div>
-        </nav>
-        <main style={{ maxWidth: '1200px', margin: '0 auto', padding: '2rem 1rem' }}>
-          {children}
-        </main>
+        <AuthProvider>
+          <nav
+            style={{
+              background: 'var(--bg-secondary)',
+              borderBottom: '1px solid var(--border)',
+              padding: '0.75rem 1.5rem',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              gap: '2rem',
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: '2rem' }}>
+              <a href="/" style={{ fontSize: '1.25rem', fontWeight: 700, textDecoration: 'none', color: 'var(--text-primary)' }}>
+                🏛️ Skill Meeting
+              </a>
+              <div style={{ display: 'flex', gap: '1.5rem' }}>
+                <a href="/" style={{ color: 'var(--text-secondary)', textDecoration: 'none', fontSize: '0.875rem' }}>
+                  會議列表
+                </a>
+                <a href="/skills" style={{ color: 'var(--text-secondary)', textDecoration: 'none', fontSize: '0.875rem' }}>
+                  Skill 管理
+                </a>
+                <a href="/marketplace" style={{ color: 'var(--text-secondary)', textDecoration: 'none', fontSize: '0.875rem' }}>
+                  🏪 市集
+                </a>
+                <a href="/meeting/new" style={{ color: 'var(--text-secondary)', textDecoration: 'none', fontSize: '0.875rem' }}>
+                  新會議
+                </a>
+              </div>
+            </div>
+            <NavAuth />
+          </nav>
+          <main style={{ maxWidth: '1200px', margin: '0 auto', padding: '2rem 1rem' }}>
+            {children}
+          </main>
+        </AuthProvider>
       </body>
     </html>
   );
