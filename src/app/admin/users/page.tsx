@@ -23,8 +23,8 @@ export default function UsersPage() {
         // Get current admin
         const meRes = await fetch('/api/auth/me');
         if (meRes.ok) {
-          const me = await meRes.json();
-          setCurrentAdmin(me.id);
+          const meData = await meRes.json();
+          setCurrentAdmin(meData.user?.id);
         }
 
         // Get users

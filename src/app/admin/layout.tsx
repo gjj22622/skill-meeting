@@ -24,8 +24,9 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           router.push('/auth/login');
           return;
         }
-        const user = await res.json();
-        if (user.role !== 'admin') {
+        const data = await res.json();
+        const user = data.user;
+        if (!user || user.role !== 'admin') {
           router.push('/');
           return;
         }
