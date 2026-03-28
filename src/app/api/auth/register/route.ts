@@ -54,13 +54,18 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Determine role: first user or matching ADMIN_EMAIL becomes admin
+    const userCount = db.prepare('SELECT COUNT(*) as count FROM users').get() as { count: number };
+    const adminEmail = process.env.ADMIN_EMAIL || '';
+    const role = (userCount.count === 0 || email.toLowerCase() === adminEmail.toLowerCase()) ? 'admin' : 'user';
+
     // Create user
     const userId = v4();
     const stmt = db.prepare(`
       INSERT INTO users (id, email, password_hash, name, role)
-      VALUES (?, ?, ?, ?, 'user')
+      VALUES (?, ?, ?, ?, ?)
     `);
-    stmt.run(userId, email, passwordHash, name);
+    stmt.run(userId, email, passwordHash, name, role);
 
     // Fetch and return user data (excluding password_hash)
     const user = db.prepare(`
