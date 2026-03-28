@@ -22,7 +22,7 @@ export async function GET(request: NextRequest) {
           : skill.expertise,
       personality:
         typeof skill.personality === 'string'
-          ? JSON.parse(skill.personality)
+          ? (() => { try { return JSON.parse(skill.personality); } catch { return skill.personality; } })()
           : skill.personality,
       prompt: skill.prompt || '',
     }))
