@@ -1,10 +1,10 @@
 FROM node:20-slim AS builder
 WORKDIR /app
 COPY package.json package-lock.json ./
+ENV NODE_ENV=development
 RUN npm ci
 COPY . .
 RUN mkdir -p public
-ENV NODE_PATH=/app/node_modules
 RUN npm run build
 
 FROM node:20-slim AS runner
