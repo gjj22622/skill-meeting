@@ -98,17 +98,10 @@ const STOP_WORDS = new Set([
 function extractExpertiseFromText(text: string): string {
   const keywords = new Set<string>();
 
-  // 1. 從 「—」後的角色摘要提取關鍵詞
-  const dashMatch = text.match(/[—–]\s*(.+?)(?:[。．\n]|$)/);
-  if (dashMatch) {
-    const chunks = dashMatch[1].match(/[\u4e00-\u9fff]{2,6}/g);
-    if (chunks) chunks.slice(0, 3).forEach(c => keywords.add(c));
-  }
-
-  // 2. 提取「」引號內的關鍵字（最常出現在觸發條件）
+  // 1. 提取「」引號內的關鍵字（觸發條件與包括列舉中最常見）
   const quoted = text.match(/「([^」]{2,8})」/g);
   if (quoted) {
-    quoted.slice(0, 15).forEach(q => {
+    quoted.forEach(q => {
       const word = q.replace(/[「」]/g, '');
       if (word.length >= 2 && word.length <= 8 && !STOP_WORDS.has(word)) {
         keywords.add(word);
@@ -116,11 +109,20 @@ function extractExpertiseFromText(text: string): string {
     });
   }
 
-  // 3. 提取 包括：後面的列舉關鍵字
-  const includeMatch = text.match(/(?:包括|包含|涉及)[：:]\s*(.+?)(?:\n\n|\n[^-]|$)/s);
-  if (includeMatch) {
-    const items = includeMatch[1].match(/[\u4e00-\u9fff]{2,8}/g);
-    if (items) items.slice(0, 5).forEach(w => { if (!STOP_WORDS.has(w)) keywords.add(w); });
+  // 2. 提取「包括：」「涉及」後的中文頓號列舉
+  const listMatches = text.matchAll(/(?:包括|包含|涉及)[：:]\s*([^。\n]+)/g);
+  for (const m of listMatches) {
+    const items = m[1].split(/[、，,]/).map(s => s.trim()).filter(s => s.length >= 2 && s.length <= 8);
+    items.forEach(w => { if (!STOP_WORDS.has(w)) keywords.add(w); });
+  }
+
+  // 3. 如果引號關鍵字不夠，從「—」後的角色摘要提取頓號分隔詞
+  if (keywords.size < 3) {
+    const dashMatch = text.match(/[—–]\s*(.+?)(?:[。．\n]|$)/);
+    if (dashMatch) {
+      const commaItems = dashMatch[1].split(/[、，,]/).map(s => s.trim()).filter(s => /^[\u4e00-\u9fffA-Za-z\s]{2,10}$/.test(s));
+      commaItems.slice(0, 3).forEach(c => keywords.add(c));
+    }
   }
 
   // 去重、過濾、取前 5 個
