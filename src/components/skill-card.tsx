@@ -20,26 +20,53 @@ export default function SkillCard({ skill, selected, onSelect, onDelete, onPubli
       className={`card ${selectable ? 'cursor-pointer' : ''}`}
       onClick={selectable ? onSelect : undefined}
       style={{
-        borderColor: selected ? 'var(--accent)' : undefined,
+        borderColor: selected ? 'var(--accent)' : isInactive ? '#f87171' : undefined,
         boxShadow: selected ? '0 0 12px rgba(59, 130, 246, 0.2)' : undefined,
-        opacity: isInactive ? 0.5 : 1,
-        transition: 'opacity 0.2s ease',
+        opacity: isInactive ? 0.55 : 1,
+        transition: 'all 0.25s ease',
+        background: isInactive ? 'repeating-linear-gradient(135deg, transparent, transparent 10px, rgba(0,0,0,0.015) 10px, rgba(0,0,0,0.015) 20px)' : undefined,
       }}
     >
       <div style={{ display: 'flex', alignItems: 'flex-start', gap: '1rem' }}>
-        <div className={`skill-avatar ${selected ? 'selected' : ''}`}>
+        <div className={`skill-avatar ${selected ? 'selected' : ''}`} style={{ position: 'relative' }}>
           {skill.avatar}
+          {/* Small status dot on avatar */}
+          {onToggle && (
+            <span style={{
+              position: 'absolute',
+              bottom: -2,
+              right: -2,
+              width: 10,
+              height: 10,
+              borderRadius: '50%',
+              background: isInactive ? '#ef4444' : '#22c55e',
+              border: '2px solid white',
+            }} />
+          )}
         </div>
         <div style={{ flex: 1 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.25rem', flexWrap: 'wrap' }}>
             <h3 style={{ fontWeight: 600, fontSize: '1.1rem' }}>{skill.name}</h3>
             {skill.isDefault && <span className="badge">預設</span>}
             {skill.id?.startsWith('sostac-') && <span className="badge" style={{ background: '#f59e0b20', color: '#d97706', border: '1px solid #f59e0b40' }}>SOSTAC®</span>}
-            {isInactive && <span className="badge" style={{ background: '#ef444420', color: '#dc2626', border: '1px solid #ef444440' }}>已停用</span>}
+            {isInactive && (
+              <span className="badge" style={{
+                background: '#ef444420',
+                color: '#dc2626',
+                border: '1px solid #ef444440',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '0.25rem',
+              }}>
+                🚫 已隱藏
+              </span>
+            )}
             {selected && <span className="badge" style={{ background: 'var(--accent)', color: 'white', border: 'none' }}>已選</span>}
           </div>
           <p style={{ color: 'var(--text-secondary)', fontSize: '0.875rem', marginBottom: '0.5rem' }}>
-            {skill.personality}
+            {typeof skill.personality === 'object'
+              ? (skill.personality as any).description || JSON.stringify(skill.personality)
+              : String(skill.personality || '')}
           </p>
           <div style={{ display: 'flex', gap: '0.375rem', flexWrap: 'wrap' }}>
             {skill.expertise.map((exp) => (
@@ -48,23 +75,56 @@ export default function SkillCard({ skill, selected, onSelect, onDelete, onPubli
           </div>
         </div>
         <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+          {/* Toggle Switch */}
           {onToggle && (
-            <button
-              onClick={(e) => { e.stopPropagation(); onToggle(); }}
+            <label
+              title={isInactive ? '點擊啟用' : '點擊隱藏'}
+              onClick={(e) => e.stopPropagation()}
               style={{
-                background: isInactive ? 'var(--bg-card)' : 'var(--accent)',
-                color: isInactive ? 'var(--text-secondary)' : 'white',
-                border: `1px solid ${isInactive ? 'var(--border)' : 'var(--accent)'}`,
-                borderRadius: '1rem',
+                position: 'relative',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '0.5rem',
                 cursor: 'pointer',
-                fontSize: '0.75rem',
-                padding: '0.25rem 0.75rem',
-                whiteSpace: 'nowrap',
+                userSelect: 'none',
               }}
-              title={isInactive ? '啟用' : '停用'}
             >
-              {isInactive ? '已停用' : '啟用中'}
-            </button>
+              {/* Track */}
+              <span
+                onClick={(e) => { e.preventDefault(); onToggle(); }}
+                style={{
+                  position: 'relative',
+                  width: 44,
+                  height: 24,
+                  borderRadius: 12,
+                  background: isInactive ? '#d1d5db' : 'var(--accent, #3b82f6)',
+                  transition: 'background 0.25s ease',
+                  flexShrink: 0,
+                }}
+              >
+                {/* Thumb */}
+                <span style={{
+                  position: 'absolute',
+                  top: 2,
+                  left: isInactive ? 2 : 22,
+                  width: 20,
+                  height: 20,
+                  borderRadius: '50%',
+                  background: 'white',
+                  boxShadow: '0 1px 3px rgba(0,0,0,0.2)',
+                  transition: 'left 0.25s ease',
+                }} />
+              </span>
+              <span style={{
+                fontSize: '0.7rem',
+                fontWeight: 600,
+                color: isInactive ? '#9ca3af' : 'var(--accent, #3b82f6)',
+                whiteSpace: 'nowrap',
+                minWidth: 32,
+              }}>
+                {isInactive ? 'OFF' : 'ON'}
+              </span>
+            </label>
           )}
           {onPublish && !skill.isDefault && (
             <button

@@ -25,8 +25,28 @@ function saveDisabledIds(ids: Set<string>): void {
   localStorage.setItem(DISABLED_KEY, JSON.stringify([...ids]));
 }
 
-/** Toggle a default skill's active state */
-export function toggleDefaultSkill(id: string): boolean {
+/** Toggle a default skill's active state (DB + localStorage fallback) */
+export async function toggleDefaultSkill(id: string): Promise<boolean> {
+  // Try API first (persists to SQLite)
+  try {
+    const res = await fetch(`/api/skills/${id}/toggle`, { method: 'PATCH' });
+    if (res.ok) {
+      const updated = await res.json();
+      // Sync localStorage with DB state
+      const disabled = getDisabledIds();
+      if (updated.isActive) {
+        disabled.delete(id);
+      } else {
+        disabled.add(id);
+      }
+      saveDisabledIds(disabled);
+      return !!updated.isActive;
+    }
+  } catch {
+    // API unavailable — fall through to localStorage-only
+  }
+
+  // Fallback: localStorage only
   const disabled = getDisabledIds();
   if (disabled.has(id)) {
     disabled.delete(id);
@@ -34,7 +54,7 @@ export function toggleDefaultSkill(id: string): boolean {
     disabled.add(id);
   }
   saveDisabledIds(disabled);
-  return !disabled.has(id); // returns new isActive state
+  return !disabled.has(id);
 }
 
 /** Get all skills with isActive status */

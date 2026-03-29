@@ -6,6 +6,7 @@ import { Skill } from '@/lib/types';
 import { getAllSkills, saveCustomSkill, deleteCustomSkill, toggleDefaultSkill } from '@/lib/skill-store';
 import SkillCard from '@/components/skill-card';
 import SkillForm from '@/components/skill-form';
+import ToastContainer, { showToast } from '@/components/toast';
 
 type FilterType = 'all' | 'active' | 'sostac' | 'custom';
 
@@ -36,9 +37,18 @@ export default function SkillsPage() {
     }
   }
 
-  function handleToggle(id: string) {
-    toggleDefaultSkill(id);
-    setSkills(getAllSkills());
+  async function handleToggle(id: string) {
+    const skill = skills.find((s) => s.id === id);
+    try {
+      const isNowActive = await toggleDefaultSkill(id);
+      setSkills(getAllSkills());
+      showToast(
+        `${skill?.name || 'Skill'} 已${isNowActive ? '啟用' : '隱藏'}`,
+        'success'
+      );
+    } catch {
+      showToast('切換失敗，請稍後再試', 'error');
+    }
   }
 
   function handleImport() {
@@ -68,8 +78,11 @@ export default function SkillsPage() {
     // Search filter
     if (search) {
       const q = search.toLowerCase();
+      const personalityText = typeof s.personality === 'object'
+        ? ((s.personality as any).description || '')
+        : String(s.personality || '');
       const match = s.name.toLowerCase().includes(q)
-        || s.personality.toLowerCase().includes(q)
+        || personalityText.toLowerCase().includes(q)
         || s.expertise.some((e) => e.toLowerCase().includes(q));
       if (!match) return false;
     }
@@ -88,6 +101,7 @@ export default function SkillsPage() {
 
   return (
     <div>
+      <ToastContainer />
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
         <div>
           <h1 style={{ fontSize: '1.75rem', fontWeight: 700 }}>Skill 管理</h1>
