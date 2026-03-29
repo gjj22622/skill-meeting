@@ -42,6 +42,12 @@ export default function AdminSkillsPage() {
   });
   const [submitting, setSubmitting] = useState(false);
   const [togglingId, setTogglingId] = useState<string | null>(null);
+  const [toast, setToast] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
+
+  const showToast = (text: string, type: 'success' | 'error' = 'success') => {
+    setToast({ text, type });
+    setTimeout(() => setToast(null), 2500);
+  };
 
   useEffect(() => {
     fetchDefaultSkills();
@@ -76,6 +82,7 @@ export default function AdminSkillsPage() {
 
   const handleToggleVisibility = async (skillId: string, currentVisibility: number) => {
     setTogglingId(skillId);
+    const skill = defaultSkills.find(s => s.id === skillId);
     try {
       const res = await fetch(`/api/admin/skills/${skillId}`, {
         method: 'PATCH',
@@ -90,9 +97,15 @@ export default function AdminSkillsPage() {
             s.id === skillId ? { ...s, is_visible: updated.is_visible } : s
           )
         );
+        const isNowVisible = updated.is_visible === 1;
+        showToast(`${skill?.name || 'Skill'} 已${isNowVisible ? '啟用' : '隱藏'}`, 'success');
+      } else {
+        const err = await res.json().catch(() => ({}));
+        showToast(`切換失敗：${err.error || '未知錯誤'}`, 'error');
       }
     } catch (error) {
       console.error('Failed to toggle visibility:', error);
+      showToast('切換失敗，請稍後再試', 'error');
     } finally {
       setTogglingId(null);
     }
@@ -360,16 +373,22 @@ export default function AdminSkillsPage() {
             gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))',
             gap: '1.5rem',
           }}>
-            {defaultSkills.map((skill) => (
+            {defaultSkills.map((skill) => {
+              const isHidden = !skill.is_visible;
+              return (
               <div
                 key={skill.id}
                 style={{
-                  background: 'var(--bg-secondary)',
-                  border: '1px solid var(--border)',
+                  background: isHidden
+                    ? 'repeating-linear-gradient(135deg, var(--bg-secondary), var(--bg-secondary) 10px, rgba(0,0,0,0.02) 10px, rgba(0,0,0,0.02) 20px)'
+                    : 'var(--bg-secondary)',
+                  border: `1px solid ${isHidden ? '#f87171' : 'var(--border)'}`,
                   borderRadius: '12px',
                   padding: '1.5rem',
                   display: 'flex',
                   flexDirection: 'column',
+                  opacity: isHidden ? 0.6 : 1,
+                  transition: 'all 0.3s ease',
                 }}
               >
                 <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '1rem' }}>
@@ -382,22 +401,35 @@ export default function AdminSkillsPage() {
                     justifyContent: 'center',
                     background: 'var(--bg-card)',
                     borderRadius: '8px',
+                    position: 'relative',
                   }}>
                     {skill.avatar}
+                    <span style={{
+                      position: 'absolute',
+                      bottom: -2,
+                      right: -2,
+                      width: 10,
+                      height: 10,
+                      borderRadius: '50%',
+                      background: isHidden ? '#ef4444' : '#22c55e',
+                      border: '2px solid var(--bg-secondary)',
+                    }} />
                   </div>
                   <div>
                     <h3 style={{ fontSize: '1.1rem', fontWeight: 600, margin: '0 0 0.25rem 0' }}>
                       {skill.name}
                     </h3>
                     <span style={{
-                      display: 'inline-block',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '0.25rem',
                       padding: '0.2rem 0.6rem',
                       borderRadius: '4px',
                       fontSize: '0.75rem',
-                      background: skill.is_visible ? 'rgba(34, 197, 94, 0.2)' : 'rgba(148, 163, 184, 0.2)',
-                      color: skill.is_visible ? 'var(--success)' : 'var(--text-secondary)',
+                      background: isHidden ? 'rgba(239, 68, 68, 0.15)' : 'rgba(34, 197, 94, 0.2)',
+                      color: isHidden ? '#dc2626' : 'var(--success)',
                     }}>
-                      {skill.is_visible ? '用戶可見' : '已隱藏'}
+                      {isHidden ? '🚫 已隱藏' : '用戶可見'}
                     </span>
                   </div>
                 </div>
@@ -424,19 +456,38 @@ export default function AdminSkillsPage() {
                   </div>
                 )}
 
-                <div style={{ marginBottom: '1rem', padding: '0.75rem 0', borderTop: '1px solid var(--border)', borderBottom: '1px solid var(--border)' }}>
-                  <label style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', cursor: 'pointer' }}>
-                    <input
-                      type="checkbox"
-                      checked={skill.is_visible === 1}
-                      onChange={() => handleToggleVisibility(skill.id, skill.is_visible)}
-                      disabled={togglingId === skill.id}
-                      style={{ width: '16px', height: '16px', cursor: togglingId === skill.id ? 'not-allowed' : 'pointer' }}
-                    />
-                    <span style={{ fontSize: '0.9rem' }}>
-                      {togglingId === skill.id ? '更新中...' : '用戶可見'}
-                    </span>
-                  </label>
+                <div style={{ marginBottom: '1rem', padding: '0.75rem 0', borderTop: '1px solid var(--border)', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                  <span style={{ fontSize: '0.9rem', color: isHidden ? 'var(--text-secondary)' : 'var(--text-primary)' }}>
+                    {togglingId === skill.id ? '更新中...' : '用戶可見'}
+                  </span>
+                  {/* Toggle Switch */}
+                  <span
+                    onClick={() => togglingId !== skill.id && handleToggleVisibility(skill.id, skill.is_visible)}
+                    style={{
+                      position: 'relative',
+                      display: 'inline-block',
+                      width: 44,
+                      height: 24,
+                      borderRadius: 12,
+                      background: isHidden ? '#d1d5db' : 'var(--accent, #3b82f6)',
+                      cursor: togglingId === skill.id ? 'not-allowed' : 'pointer',
+                      transition: 'background 0.25s ease',
+                      opacity: togglingId === skill.id ? 0.5 : 1,
+                      flexShrink: 0,
+                    }}
+                  >
+                    <span style={{
+                      position: 'absolute',
+                      top: 2,
+                      left: isHidden ? 2 : 22,
+                      width: 20,
+                      height: 20,
+                      borderRadius: '50%',
+                      background: 'white',
+                      boxShadow: '0 1px 3px rgba(0,0,0,0.2)',
+                      transition: 'left 0.25s ease',
+                    }} />
+                  </span>
                 </div>
 
                 <div style={{ display: 'flex', gap: '0.5rem' }}>
@@ -461,7 +512,8 @@ export default function AdminSkillsPage() {
                   </button>
                 </div>
               </div>
-            ))}
+              );
+            })}
           </div>
 
           {defaultSkills.length === 0 && (
@@ -563,6 +615,31 @@ export default function AdminSkillsPage() {
           )}
         </>
       )}
+      {/* Toast */}
+      {toast && (
+        <div style={{
+          position: 'fixed',
+          bottom: 24,
+          right: 24,
+          zIndex: 9999,
+          padding: '0.65rem 1.25rem',
+          borderRadius: '0.75rem',
+          background: toast.type === 'success' ? '#22c55e' : '#ef4444',
+          color: 'white',
+          fontSize: '0.875rem',
+          fontWeight: 600,
+          boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+          animation: 'toast-in 0.3s ease',
+        }}>
+          {toast.type === 'success' ? '✓' : '✕'} {toast.text}
+        </div>
+      )}
+      <style>{`
+        @keyframes toast-in {
+          from { opacity: 0; transform: translateY(12px); }
+          to   { opacity: 1; transform: translateY(0); }
+        }
+      `}</style>
     </div>
   );
 }

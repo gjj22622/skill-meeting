@@ -94,16 +94,20 @@ export async function PATCH(
       .prepare('SELECT * FROM default_skills WHERE id = ?')
       .get(id)
 
+    let parsedExpertise = updatedSkill.expertise
+    try {
+      if (typeof parsedExpertise === 'string') parsedExpertise = JSON.parse(parsedExpertise)
+    } catch { /* keep as-is */ }
+
+    let parsedPersonality: any = updatedSkill.personality
+    try {
+      if (typeof parsedPersonality === 'string') parsedPersonality = JSON.parse(parsedPersonality)
+    } catch { /* plain text personality — keep as-is */ }
+
     const parsed = {
       ...updatedSkill,
-      expertise:
-        typeof updatedSkill.expertise === 'string'
-          ? JSON.parse(updatedSkill.expertise)
-          : updatedSkill.expertise,
-      personality:
-        typeof updatedSkill.personality === 'string'
-          ? JSON.parse(updatedSkill.personality)
-          : updatedSkill.personality,
+      expertise: parsedExpertise,
+      personality: parsedPersonality,
     }
 
     return NextResponse.json(parsed)

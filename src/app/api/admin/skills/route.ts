@@ -96,16 +96,15 @@ export async function POST(request: NextRequest) {
 
     const newSkill: any = db.prepare('SELECT * FROM default_skills WHERE id = ?').get(id)
 
+    let parsedExpertise = newSkill.expertise
+    try { if (typeof parsedExpertise === 'string') parsedExpertise = JSON.parse(parsedExpertise) } catch { /* keep */ }
+    let parsedPersonality: any = newSkill.personality
+    try { if (typeof parsedPersonality === 'string') parsedPersonality = JSON.parse(parsedPersonality) } catch { /* keep */ }
+
     const parsed = {
       ...newSkill,
-      expertise:
-        typeof newSkill.expertise === 'string'
-          ? JSON.parse(newSkill.expertise)
-          : newSkill.expertise,
-      personality:
-        typeof newSkill.personality === 'string'
-          ? JSON.parse(newSkill.personality)
-          : newSkill.personality,
+      expertise: parsedExpertise,
+      personality: parsedPersonality,
     }
 
     return NextResponse.json(parsed, { status: 201 })
