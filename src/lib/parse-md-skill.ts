@@ -135,7 +135,7 @@ function extractExpertiseFromText(text: string): string {
  */
 function extractPersonalitySummary(description: string): string {
   // 去掉 name 部分（如 "双云行銷創辦人 Agent — ..."），取「—」後面
-  const dashMatch = description.match(/[—–]\s*(.+)/s);
+  const dashMatch = description.match(/[—–]\s*([\s\S]+)/);
   const mainText = dashMatch ? dashMatch[1] : description;
 
   // 取到第一個句號
