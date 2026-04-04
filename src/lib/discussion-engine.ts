@@ -75,19 +75,23 @@ function buildSummaryPrompt(messages: MeetingMessage[], meeting: Meeting): strin
 
 ${transcript}
 
-請根據以上討論，產出結構化的總結報告，格式如下：
+請根據以上討論，產出結構化的總結報告。
+
+⚠️ 格式要求（務必嚴格遵守，不得更改標題文字）：
 
 ## 共識結論
-（列出所有參與者達成共識的觀點和結論）
+（在此列出所有參與者達成共識的觀點和結論，用條列式）
 
 ## 分歧觀點
-（列出參與者之間的不同意見和爭議點）
+（在此列出參與者之間的不同意見和爭議點，用條列式）
 
 ## 待釐清問題
-（列出需要更多資訊或進一步討論的問題）
+（在此列出需要更多資訊或進一步討論的問題，用條列式）
 
 ## 行動建議
-（根據討論結果，提出具體的下一步建議）`;
+（在此根據討論結果，提出具體的下一步建議，用條列式）
+
+重要：每個段落標題必須完全使用「## 共識結論」「## 分歧觀點」「## 待釐清問題」「## 行動建議」，不可加入編號、emoji 或任何修改。每個段落至少要有一項內容，不可留空。`;
 }
 
 export async function* runDiscussion(
@@ -291,44 +295,77 @@ export async function* runDiscussion(
   yield { type: 'done' };
 }
 
+// Fuzzy keyword patterns for each section (handles AI rephrasing)
+const SECTION_PATTERNS: Record<string, RegExp> = {
+  '共識結論': /共識|consensus|一致同意|達成.{0,4}共識|共同結論/i,
+  '分歧觀點': /分歧|歧見|不同意見|爭議|disagreement|觀點差異|意見不同/i,
+  '待釐清問題': /待釐清|釐清|未解|open.?question|待討論|需要.{0,4}討論|進一步/i,
+  '行動建議': /行動建議|action|下一步|建議行動|具體建議|行動方案|後續/i,
+};
+
+
+function looksLikeHeader(line: string): boolean {
+  const trimmed = line.trim();
+  // Markdown heading, bold heading, or numbered heading prefix
+  return (
+    /^#{1,6}\s+/.test(trimmed) ||
+    /^\*\*[^*]+\*\*\s*$/.test(trimmed) ||
+    /^[\d一二三四五六七八九十]+[.、：:\s]/.test(trimmed)
+  );
+}
+
+function looksLikeHeaderLoose(line: string): boolean {
+  // Looser check: also counts short standalone lines (for target section detection)
+  return looksLikeHeader(line) || line.trim().length <= 60;
+}
+
+function matchesSection(line: string, sectionName: string): boolean {
+  const trimmed = line.trim();
+  // Exact match first
+  if (trimmed.includes(sectionName)) return true;
+  // Fuzzy match via patterns
+  const pattern = SECTION_PATTERNS[sectionName];
+  return pattern ? pattern.test(trimmed) : false;
+}
+
+function matchesAnyOtherSection(line: string, currentSection: string): boolean {
+  const trimmed = line.trim();
+  for (const [name, pattern] of Object.entries(SECTION_PATTERNS)) {
+    if (name === currentSection) continue;
+    if (trimmed.includes(name) || pattern.test(trimmed)) return true;
+  }
+  return false;
+}
+
 function extractSection(content: string, sectionName: string): string {
   const lines = content.split('\n');
   let inSection = false;
   const sectionLines: string[] = [];
 
-  // Known section names to detect when a NEW section starts (so we stop collecting)
-  const ALL_SECTIONS = ['共識結論', '分歧觀點', '待釐清問題', '行動建議'];
-
   for (const line of lines) {
     const trimmed = line.trim();
     if (!trimmed) {
-      // Keep blank lines if we're already in a section (for formatting)
       if (inSection) sectionLines.push('');
       continue;
     }
 
-    // Check if this line is a "section header" for ANY known section.
-    // We use a very loose check: if the line contains one of our known section names
-    // and is "header-like" (short line, or starts with #, **, numbering, etc.)
-    const containsCurrentSection = trimmed.includes(sectionName);
-    const containsOtherSection = ALL_SECTIONS.some(
-      (s) => s !== sectionName && trimmed.includes(s)
-    );
+    const isCurrentSection = matchesSection(line, sectionName);
+    const isOtherSection = matchesAnyOtherSection(line, sectionName);
 
-    // Detect if this line looks like a header for our target section
-    // Very loose: ANY line containing the section name that is ≤80 chars is treated as a header
-    if (containsCurrentSection && trimmed.length <= 80) {
+    // Detect header for our target section (use loose check, only when not already inside)
+    if (!inSection && isCurrentSection && looksLikeHeaderLoose(line)) {
       inSection = true;
       continue; // Skip the header line itself
     }
 
-    // If we're in our section and hit a line containing another section name, stop
-    if (inSection && containsOtherSection && trimmed.length <= 80) {
+    // If we're in our section and hit another section's header, stop
+    // Use strict check for boundaries to avoid false positives in content
+    if (inSection && isOtherSection && looksLikeHeader(line)) {
       break;
     }
 
-    // Also stop if we hit a markdown heading (##) that doesn't contain our section name
-    if (inSection && /^#{1,6}\s+/.test(line) && !containsCurrentSection) {
+    // Also stop on any markdown heading that doesn't match our section
+    if (inSection && /^#{1,6}\s+/.test(line) && !isCurrentSection) {
       break;
     }
 
@@ -343,6 +380,6 @@ function extractSection(content: string, sectionName: string): string {
   }
 
   const result = sectionLines.join('\n').trim();
-  console.error(`[extractSection] "${sectionName}" => ${result.length} chars: "${result.substring(0, 150)}${result.length > 150 ? '...' : ''}"`);
+  console.error(`[extractSection] "${sectionName}" => ${result.length} chars: "${result.substring(0, 200)}${result.length > 200 ? '...' : ''}"`);
   return result;
 }
