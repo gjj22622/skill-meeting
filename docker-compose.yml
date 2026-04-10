@@ -1,0 +1,22 @@
+services:
+  skill-meeting:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: skill-meeting
+    restart: unless-stopped
+    ports:
+      - "3100:3000"
+    volumes:
+      - skill-meeting-data:/app/data
+    env_file:
+      - .env
+    environment:
+      - NODE_ENV=production
+      - PORT=3000
+      - DATABASE_PATH=/app/data/skill-meeting.db
+      - JWT_SECRET=${JWT_SECRET:-skill-meeting-local-dev-secret}
+
+volumes:
+  skill-meeting-data:
+    name: skill-meeting-data

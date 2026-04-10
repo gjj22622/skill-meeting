@@ -2,7 +2,7 @@
 
 import { useState, useEffect, use } from 'react';
 import { Meeting, Skill } from '@/lib/types';
-import { getMeetings, getAllSkills } from '@/lib/skill-store';
+import { getMeetings, getAllSkills, fetchSkillsFromApi } from '@/lib/skill-store';
 import MeetingRoom from '@/components/meeting-room';
 
 export default function MeetingPage({ params }: { params: Promise<{ id: string }> }) {
@@ -13,14 +13,27 @@ export default function MeetingPage({ params }: { params: Promise<{ id: string }
   useEffect(() => {
     const allMeetings = getMeetings();
     const found = allMeetings.find((m: Meeting) => m.id === id);
-    if (found) {
-      setMeeting(found);
-      const allSkills = getAllSkills();
+    if (!found) return;
+    setMeeting(found);
+
+    // 優先從 API 取 skills（包含 DB 中的自建 skill），失敗時 fallback localStorage
+    (async () => {
+      let allSkills: Skill[];
+      try {
+        const res = await fetch('/api/auth/me', { credentials: 'include' });
+        if (res.ok) {
+          allSkills = await fetchSkillsFromApi();
+        } else {
+          allSkills = getAllSkills();
+        }
+      } catch {
+        allSkills = getAllSkills();
+      }
       const selected = found.skillIds
         .map((sid: string) => allSkills.find((s: Skill) => s.id === sid))
         .filter(Boolean) as Skill[];
       setSkills(selected);
-    }
+    })();
   }, [id]);
 
   if (!meeting) {
