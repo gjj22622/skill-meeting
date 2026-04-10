@@ -16,7 +16,7 @@ export type ProviderType = 'openrouter' | 'gemini' | 'anthropic';
 export interface ModelConfig {
   provider: ProviderType;
   model: string;
-  label?: string;         // 顯示用標籤，例如 "Gemini Flash (免費)"
+  label?: string;         // 顯示用標籤，例如 "Gemini 2.5 Flash (免費)"
 }
 
 export interface AIStreamChunk {
@@ -52,12 +52,12 @@ const PROVIDER_CONFIGS: Record<ProviderType, { baseURL: string; keyEnv: string }
 
 const DEFAULT_MODELS: Record<string, ModelConfig[]> = {
   opening: [
-    { provider: 'gemini', model: 'gemini-2.0-flash', label: 'Gemini Flash (免費)' },
-    { provider: 'openrouter', model: 'google/gemini-2.0-flash-exp:free', label: 'Gemini Flash via OpenRouter (免費)' },
+    { provider: 'gemini', model: 'gemini-2.5-flash', label: 'Gemini 2.5 Flash (免費)' },
+    { provider: 'openrouter', model: 'google/gemini-2.5-flash-exp:free', label: 'Gemini Flash via OpenRouter (免費)' },
     { provider: 'anthropic', model: 'claude-sonnet-4-20250514', label: 'Claude Sonnet 4 (fallback)' },
   ],
   discussion: [
-    { provider: 'gemini', model: 'gemini-2.0-flash', label: 'Gemini Flash (免費)' },
+    { provider: 'gemini', model: 'gemini-2.5-flash', label: 'Gemini 2.5 Flash (免費)' },
     { provider: 'openrouter', model: 'google/gemini-2.5-flash', label: 'Gemini 2.5 Flash ($0.15/M)' },
     { provider: 'anthropic', model: 'claude-sonnet-4-20250514', label: 'Claude Sonnet 4 (fallback)' },
   ],

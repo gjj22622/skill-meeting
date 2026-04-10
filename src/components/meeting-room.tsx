@@ -33,6 +33,7 @@ export default function MeetingRoom({ meeting, skills }: MeetingRoomProps) {
   const [isRunning, setIsRunning] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const chatEndRef = useRef<HTMLDivElement>(null);
+  const abortRef = useRef<AbortController | null>(null);
 
   const scrollToBottom = useCallback(() => {
     chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -42,6 +43,13 @@ export default function MeetingRoom({ meeting, skills }: MeetingRoomProps) {
     scrollToBottom();
   }, [messages, scrollToBottom]);
 
+  function stopDiscussion() {
+    if (abortRef.current) {
+      abortRef.current.abort();
+      abortRef.current = null;
+    }
+  }
+
   async function startDiscussion() {
     setIsRunning(true);
     setError(null);
@@ -50,12 +58,16 @@ export default function MeetingRoom({ meeting, skills }: MeetingRoomProps) {
     // 更新會議狀態為進行中
     saveMeeting({ ...meeting, status: 'in_progress' });
 
+    const controller = new AbortController();
+    abortRef.current = controller;
+
     try {
       const customSkills = skills.filter((s) => !s.isDefault);
       const res = await fetch(`/api/meeting/${meeting.id}/discuss`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ meeting, customSkills }),
+        signal: controller.signal,
       });
 
       if (!res.ok) {
@@ -90,9 +102,15 @@ export default function MeetingRoom({ meeting, skills }: MeetingRoomProps) {
         }
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Unknown error');
+      if (err instanceof DOMException && err.name === 'AbortError') {
+        // 使用者手動停止，不算錯誤
+        setCurrentPhase('waiting');
+      } else {
+        setError(err instanceof Error ? err.message : 'Unknown error');
+      }
     } finally {
       setIsRunning(false);
+      abortRef.current = null;
     }
   }
 
@@ -211,6 +229,23 @@ export default function MeetingRoom({ meeting, skills }: MeetingRoomProps) {
           {!isRunning && !report && (
             <button className="btn-primary" onClick={startDiscussion} style={{ fontSize: '1rem', padding: '0.75rem 2rem' }}>
               🚀 開始討論
+            </button>
+          )}
+          {isRunning && (
+            <button
+              onClick={stopDiscussion}
+              style={{
+                fontSize: '1rem',
+                padding: '0.75rem 2rem',
+                background: 'var(--danger, #ef4444)',
+                color: 'white',
+                border: 'none',
+                borderRadius: '0.5rem',
+                cursor: 'pointer',
+                fontWeight: 600,
+              }}
+            >
+              ⏹ 停止討論
             </button>
           )}
         </div>
