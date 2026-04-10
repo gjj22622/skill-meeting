@@ -58,18 +58,26 @@ function StatCard({
 // ── API 使用狀況長條圖 ──
 
 interface ApiKeyUsage {
+  provider: string;
   key_index: number;
+  label: string;
   total_input_tokens: number;
   total_output_tokens: number;
   total_requests: number;
-  daily_token_limit: number;
-  daily_request_limit: number;
+  daily_token_limit: number | null;
+  daily_request_limit: number | null;
 }
 
 interface ApiUsageData {
   keys: ApiKeyUsage[];
-  pool: { total: number; available: number };
+  pool: { gemini: { total: number; available: number } };
 }
+
+const PROVIDER_COLORS: Record<string, string> = {
+  gemini: '#4285f4',
+  openrouter: '#8b5cf6',
+  anthropic: '#d97706',
+};
 
 function getBarColor(percentage: number): string {
   if (percentage >= 85) return '#ef4444';
@@ -97,6 +105,8 @@ function ApiUsageChart() {
 
   if (!data) return null;
 
+  const geminiPool = data.pool.gemini;
+
   return (
     <div
       style={{
@@ -112,36 +122,47 @@ function ApiUsageChart() {
           API 使用狀況
         </h2>
         <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
-          Key Pool: {data.pool.available}/{data.pool.total} 可用 · 每 30 秒刷新
+          {data.keys.length} 個 API Key · Gemini {geminiPool.available}/{geminiPool.total} 可用 · 每 30 秒刷新
         </span>
       </div>
 
       {data.keys.length === 0 ? (
         <p style={{ color: 'var(--text-secondary)', textAlign: 'center', padding: '2rem 0' }}>
-          尚無使用紀錄
+          尚無 API Key 設定
         </p>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
           {data.keys.map((key) => {
             const totalTokens = key.total_input_tokens + key.total_output_tokens;
-            const percentage = key.daily_token_limit > 0
-              ? Math.min((totalTokens / key.daily_token_limit) * 100, 100)
+            const hasLimit = key.daily_token_limit !== null && key.daily_token_limit > 0;
+            const percentage = hasLimit
+              ? Math.min((totalTokens / key.daily_token_limit!) * 100, 100)
               : 0;
-            const remaining = Math.max(key.daily_token_limit - totalTokens, 0);
-            const barColor = getBarColor(percentage);
+            const remaining = hasLimit ? Math.max(key.daily_token_limit! - totalTokens, 0) : null;
+            const barColor = hasLimit ? getBarColor(percentage) : (PROVIDER_COLORS[key.provider] || '#6b7280');
+            const barWidth = hasLimit ? Math.max(percentage, 1) : (totalTokens > 0 ? 100 : 2);
 
             return (
-              <div key={key.key_index}>
+              <div key={`${key.provider}-${key.key_index}`}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.25rem' }}>
-                  <span style={{ fontSize: '0.875rem', fontWeight: 500 }}>
-                    Key #{key.key_index + 1}
+                  <span style={{ fontSize: '0.875rem', fontWeight: 500, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                    <span style={{
+                      display: 'inline-block',
+                      width: '8px',
+                      height: '8px',
+                      borderRadius: '50%',
+                      background: PROVIDER_COLORS[key.provider] || '#6b7280',
+                    }} />
+                    {key.label}
                   </span>
                   <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
-                    {totalTokens.toLocaleString()} / {key.daily_token_limit.toLocaleString()} tokens
-                    ({percentage.toFixed(1)}%) · {key.total_requests} 次請求
+                    {hasLimit
+                      ? `${totalTokens.toLocaleString()} / ${key.daily_token_limit!.toLocaleString()} tokens (${percentage.toFixed(1)}%)`
+                      : `${totalTokens.toLocaleString()} tokens (按用量計費)`
+                    }
+                    {' · '}{key.total_requests} 次請求
                   </span>
                 </div>
-                {/* Bar background */}
                 <div
                   style={{
                     width: '100%',
@@ -152,17 +173,16 @@ function ApiUsageChart() {
                     position: 'relative',
                   }}
                 >
-                  {/* Bar fill */}
                   <div
                     style={{
-                      width: `${Math.max(percentage, 1)}%`,
+                      width: `${barWidth}%`,
                       height: '100%',
                       background: barColor,
                       borderRadius: '6px',
                       transition: 'width 0.5s ease, background 0.3s ease',
+                      opacity: hasLimit ? 1 : 0.6,
                     }}
                   />
-                  {/* Remaining label inside bar */}
                   <span
                     style={{
                       position: 'absolute',
@@ -173,7 +193,7 @@ function ApiUsageChart() {
                       color: 'rgba(255,255,255,0.7)',
                     }}
                   >
-                    剩餘 {remaining.toLocaleString()}
+                    {remaining !== null ? `剩餘 ${remaining.toLocaleString()}` : ''}
                   </span>
                 </div>
               </div>

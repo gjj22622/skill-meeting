@@ -164,6 +164,7 @@ export function recordApiUsage(
 }
 
 export interface DailyKeyUsage {
+  provider: string;
   key_index: number;
   total_input_tokens: number;
   total_output_tokens: number;
@@ -174,15 +175,15 @@ export function getDailyApiUsage(): DailyKeyUsage[] {
   const db = getDb();
   const rows = db.prepare(
     `SELECT
+       provider,
        key_index,
        SUM(input_tokens) as total_input_tokens,
        SUM(output_tokens) as total_output_tokens,
        COUNT(*) as total_requests
      FROM api_usage
-     WHERE provider = 'gemini'
-       AND date(created_at) = date('now')
-     GROUP BY key_index
-     ORDER BY key_index`
+     WHERE date(created_at) = date('now')
+     GROUP BY provider, key_index
+     ORDER BY provider, key_index`
   ).all() as DailyKeyUsage[];
   return rows;
 }

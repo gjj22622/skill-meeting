@@ -8,16 +8,29 @@ export async function GET(request: NextRequest) {
     requireAdmin(request)
 
     const usage = getDailyApiUsage()
-    const pool = getKeyPoolStatus()
+    const geminiPool = getKeyPoolStatus()
     const dailyTokenLimit = parseInt(process.env.GEMINI_DAILY_TOKEN_LIMIT || '1000000', 10)
     const dailyRequestLimit = parseInt(process.env.GEMINI_DAILY_REQUEST_LIMIT || '1500', 10)
 
-    // 補齊沒有用量紀錄的 key（填入零值）
-    const keys = []
-    for (let i = 0; i < pool.total; i++) {
-      const existing = usage.find(u => u.key_index === i)
+    // 建立所有 provider 的 key 清單
+    const keys: Array<{
+      provider: string;
+      key_index: number;
+      label: string;
+      total_input_tokens: number;
+      total_output_tokens: number;
+      total_requests: number;
+      daily_token_limit: number | null;
+      daily_request_limit: number | null;
+    }> = []
+
+    // Gemini keys（有免費額度上限）
+    for (let i = 0; i < geminiPool.total; i++) {
+      const existing = usage.find(u => u.provider === 'gemini' && u.key_index === i)
       keys.push({
+        provider: 'gemini',
         key_index: i,
+        label: `Gemini Key #${i + 1}`,
         total_input_tokens: existing?.total_input_tokens || 0,
         total_output_tokens: existing?.total_output_tokens || 0,
         total_requests: existing?.total_requests || 0,
@@ -26,7 +39,40 @@ export async function GET(request: NextRequest) {
       })
     }
 
-    return NextResponse.json({ keys, pool })
+    // OpenRouter（有 key 就顯示，無固定免費額度）
+    if (process.env.OPENROUTER_API_KEY) {
+      const existing = usage.find(u => u.provider === 'openrouter')
+      keys.push({
+        provider: 'openrouter',
+        key_index: 0,
+        label: 'OpenRouter',
+        total_input_tokens: existing?.total_input_tokens || 0,
+        total_output_tokens: existing?.total_output_tokens || 0,
+        total_requests: existing?.total_requests || 0,
+        daily_token_limit: null, // 按用量計費，無固定上限
+        daily_request_limit: null,
+      })
+    }
+
+    // Anthropic（有 key 就顯示，無固定免費額度）
+    if (process.env.ANTHROPIC_API_KEY) {
+      const existing = usage.find(u => u.provider === 'anthropic')
+      keys.push({
+        provider: 'anthropic',
+        key_index: 0,
+        label: 'Anthropic',
+        total_input_tokens: existing?.total_input_tokens || 0,
+        total_output_tokens: existing?.total_output_tokens || 0,
+        total_requests: existing?.total_requests || 0,
+        daily_token_limit: null, // 按用量計費
+        daily_request_limit: null,
+      })
+    }
+
+    return NextResponse.json({
+      keys,
+      pool: { gemini: geminiPool },
+    })
   } catch (e) {
     if (e instanceof AuthError) {
       return NextResponse.json({ error: e.message }, { status: e.status })
