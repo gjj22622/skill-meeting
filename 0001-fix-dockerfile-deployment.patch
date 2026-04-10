@@ -1,0 +1,85 @@
+From 755f630a3e0420919a75ba8b553441698e5a3b3e Mon Sep 17 00:00:00 2001
+From: Jacky <gjj22622@gmail.com>
+Date: Sat, 28 Mar 2026 10:00:29 +0800
+Subject: [PATCH] fix: switch to Dockerfile deployment to bypass Zeabur npm
+ buildpack error
+
+Zeabur's nodejs buildpack fails on `npm update -g npm` (MODULE_NOT_FOUND).
+Using a custom Dockerfile with node:20-alpine gives full control over the
+build process and avoids the broken buildpack entirely.
+
+Co-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>
+---
+ .dockerignore |  6 ++++++
+ Dockerfile    | 29 +++++++++++++++++++++++++++++
+ zeabur.json   |  5 +----
+ 3 files changed, 36 insertions(+), 4 deletions(-)
+ create mode 100644 .dockerignore
+ create mode 100644 Dockerfile
+
+diff --git a/.dockerignore b/.dockerignore
+new file mode 100644
+index 0000000..f3c1c62
+--- /dev/null
++++ b/.dockerignore
+@@ -0,0 +1,6 @@
++node_modules
++.next
++.git
++*.md
++.env*
++.DS_Store
+diff --git a/Dockerfile b/Dockerfile
+new file mode 100644
+index 0000000..56c1937
+--- /dev/null
++++ b/Dockerfile
+@@ -0,0 +1,29 @@
++# ── Build stage ──────────────────────────────────────
++FROM node:20-alpine AS builder
++WORKDIR /app
++
++COPY package.json package-lock.json ./
++RUN npm ci
++
++COPY . .
++
++# Ensure public dir exists for Next.js standalone
++RUN mkdir -p public
++
++RUN npm run build
++
++# ── Production stage ─────────────────────────────────
++FROM node:20-alpine AS runner
++WORKDIR /app
++
++ENV NODE_ENV=production
++ENV PORT=3000
++
++# Copy standalone output
++COPY --from=builder /app/.next/standalone ./
++COPY --from=builder /app/.next/static ./.next/static
++COPY --from=builder /app/public ./public
++
++EXPOSE 3000
++
++CMD ["node", "server.js"]
+diff --git a/zeabur.json b/zeabur.json
+index 2065dae..b7b3562 100644
+--- a/zeabur.json
++++ b/zeabur.json
+@@ -1,10 +1,7 @@
+ {
+   "$schema": "https://schema.zeabur.app/template.json",
+   "build": {
+-    "type": "nodejs",
+-    "build_command": "npm run build",
+-    "start_command": "PORT=3000 node .next/standalone/server.js",
+-    "node_version": "20"
++    "type": "dockerfile"
+   },
+   "runtime": {
+     "port": 3000,
+-- 
+2.34.1
+

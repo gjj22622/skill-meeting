@@ -1,0 +1,29 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(git remote:*)",
+      "Bash(git pull:*)",
+      "Bash(npm install:*)",
+      "Bash(openspec:*)",
+      "Bash(git -C \"/c/Users/gjj22/Documents/Claude/Projects/Skill Meeting\" log --oneline)",
+      "Skill(update-config)",
+      "Bash(node:*)",
+      "Bash(claude mcp:*)",
+      "Bash(npm run:*)"
+    ]
+  },
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Write|Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "powershell -Command \"if (Test-Path tsconfig.json) { npx tsc --noEmit 2>&1 | Select-Object -First 20 }\"",
+            "timeout": 30
+          }
+        ]
+      }
+    ]
+  }
+}

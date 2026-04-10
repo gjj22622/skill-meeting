@@ -23,8 +23,10 @@
 npm-debug.log*
 
 # env files
+.env
 .env*.local
 
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+skill-meeting/.git

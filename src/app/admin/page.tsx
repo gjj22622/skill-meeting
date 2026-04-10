@@ -55,6 +55,136 @@ function StatCard({
   );
 }
 
+// ── API 使用狀況長條圖 ──
+
+interface ApiKeyUsage {
+  key_index: number;
+  total_input_tokens: number;
+  total_output_tokens: number;
+  total_requests: number;
+  daily_token_limit: number;
+  daily_request_limit: number;
+}
+
+interface ApiUsageData {
+  keys: ApiKeyUsage[];
+  pool: { total: number; available: number };
+}
+
+function getBarColor(percentage: number): string {
+  if (percentage >= 85) return '#ef4444';
+  if (percentage >= 60) return '#eab308';
+  return '#22c55e';
+}
+
+function ApiUsageChart() {
+  const [data, setData] = useState<ApiUsageData | null>(null);
+
+  useEffect(() => {
+    const fetchUsage = async () => {
+      try {
+        const res = await fetch('/api/admin/api-usage');
+        if (res.ok) setData(await res.json());
+      } catch (e) {
+        console.error('Failed to fetch API usage:', e);
+      }
+    };
+
+    fetchUsage();
+    const interval = setInterval(fetchUsage, 30_000);
+    return () => clearInterval(interval);
+  }, []);
+
+  if (!data) return null;
+
+  return (
+    <div
+      style={{
+        background: 'var(--bg-secondary)',
+        border: '1px solid var(--border)',
+        borderRadius: '12px',
+        padding: '1.5rem',
+        marginBottom: '2rem',
+      }}
+    >
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+        <h2 style={{ fontSize: '1.25rem', fontWeight: 600, margin: 0 }}>
+          API 使用狀況
+        </h2>
+        <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
+          Key Pool: {data.pool.available}/{data.pool.total} 可用 · 每 30 秒刷新
+        </span>
+      </div>
+
+      {data.keys.length === 0 ? (
+        <p style={{ color: 'var(--text-secondary)', textAlign: 'center', padding: '2rem 0' }}>
+          尚無使用紀錄
+        </p>
+      ) : (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+          {data.keys.map((key) => {
+            const totalTokens = key.total_input_tokens + key.total_output_tokens;
+            const percentage = key.daily_token_limit > 0
+              ? Math.min((totalTokens / key.daily_token_limit) * 100, 100)
+              : 0;
+            const remaining = Math.max(key.daily_token_limit - totalTokens, 0);
+            const barColor = getBarColor(percentage);
+
+            return (
+              <div key={key.key_index}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.25rem' }}>
+                  <span style={{ fontSize: '0.875rem', fontWeight: 500 }}>
+                    Key #{key.key_index + 1}
+                  </span>
+                  <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
+                    {totalTokens.toLocaleString()} / {key.daily_token_limit.toLocaleString()} tokens
+                    ({percentage.toFixed(1)}%) · {key.total_requests} 次請求
+                  </span>
+                </div>
+                {/* Bar background */}
+                <div
+                  style={{
+                    width: '100%',
+                    height: '24px',
+                    background: 'var(--bg-primary, #1a1a2e)',
+                    borderRadius: '6px',
+                    overflow: 'hidden',
+                    position: 'relative',
+                  }}
+                >
+                  {/* Bar fill */}
+                  <div
+                    style={{
+                      width: `${Math.max(percentage, 1)}%`,
+                      height: '100%',
+                      background: barColor,
+                      borderRadius: '6px',
+                      transition: 'width 0.5s ease, background 0.3s ease',
+                    }}
+                  />
+                  {/* Remaining label inside bar */}
+                  <span
+                    style={{
+                      position: 'absolute',
+                      right: '8px',
+                      top: '50%',
+                      transform: 'translateY(-50%)',
+                      fontSize: '0.7rem',
+                      color: 'rgba(255,255,255,0.7)',
+                    }}
+                  >
+                    剩餘 {remaining.toLocaleString()}
+                  </span>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function formatDate(dateString: string) {
   const date = new Date(dateString);
   return date.toLocaleString('zh-TW', {
@@ -124,6 +254,9 @@ export default function AdminDashboard() {
         <StatCard label="已完成會議" value={stats.completedMeetings} color="var(--success)" />
         <StatCard label="Token用量" value={stats.totalTokenUsage.toLocaleString()} color="var(--warning)" />
       </div>
+
+      {/* API Usage Chart */}
+      <ApiUsageChart />
 
       {/* Daily Meetings Chart */}
       <div

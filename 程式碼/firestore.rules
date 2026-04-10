@@ -1,0 +1,105 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // ===============================================================
+    // Assumed Data Model
+    // ===============================================================
+    // Collection: skills
+    // Document ID: skillId
+    // Fields: name, avatar, expertise, personality, prompt, signature, ownerId, isDefault
+    //
+    // Collection: meetings
+    // Document ID: meetingId
+    // Fields: topic, sourceData, rounds, goalType, status, createdAt, ownerId, skillIds, currentRound, currentPhase, totalInputTokens, totalOutputTokens, durationSeconds, startTime, endTime
+    //
+    // Subcollection: meetings/{meetingId}/messages
+    // Fields: meetingId, skillId, skillName, skillAvatar, round, phase, content, signature, createdAt
+    //
+    // Subcollection: meetings/{meetingId}/reports
+    // Fields: meetingId, content, createdAt
+    // ===============================================================
+
+    // Helper Functions
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    function isDocOwner() {
+      return isAuthenticated() && request.auth.uid == resource.data.ownerId;
+    }
+
+    function isAdmin() {
+      return isAuthenticated() &&
+        (request.auth.token.email == "tw52613000@2clouds.cc" || 
+         (exists(/databases/$(database)/documents/users/$(request.auth.uid)) && 
+          get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin'));
+    }
+
+    // Domain Validators
+    function isValidSkill(data) {
+      return data.name is string && data.name.size() > 0 && data.name.size() < 100 &&
+             data.avatar is string && data.avatar.size() > 0 &&
+             data.expertise is list &&
+             data.personality is string && data.personality.size() < 5000 &&
+             data.prompt is string && data.prompt.size() < 20000 &&
+             data.ownerId is string &&
+             data.isDefault is bool &&
+             data.createdAt is string &&
+             data.signature is map && data.signature.style is string;
+    }
+
+    function isValidMeeting(data) {
+      return data.topic is string && data.topic.size() > 0 && data.topic.size() < 500 &&
+             data.rounds is int && data.rounds >= 1 && data.rounds <= 10 &&
+             data.goalType in ['consensus', 'exploration', 'brainstorming'] &&
+             data.status in ['pending', 'running', 'completed', 'failed'] &&
+             data.skillIds is list && data.skillIds.size() >= 2 && data.skillIds.size() <= 6 &&
+             (!('totalInputTokens' in data) || data.totalInputTokens is int) &&
+             (!('totalOutputTokens' in data) || data.totalOutputTokens is int) &&
+             (!('durationSeconds' in data) || data.durationSeconds is int) &&
+             (!('startTime' in data) || data.startTime is string) &&
+             (!('endTime' in data) || data.endTime is string);
+    }
+
+    function isValidMessage(data) {
+      return data.content is string && data.content.size() > 0 && data.content.size() < 10000 &&
+             data.meetingId is string && data.skillId is string;
+    }
+
+    // Rules
+    match /skills/{skillId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated() && isValidSkill(request.resource.data) && (request.resource.data.ownerId == request.auth.uid || isAdmin());
+      allow update: if isDocOwner() && isValidSkill(request.resource.data) && request.resource.data.ownerId == resource.data.ownerId;
+      allow delete: if isDocOwner() || isAdmin();
+    }
+
+    match /meetings/{meetingId} {
+      allow read: if isDocOwner() || isAdmin();
+      allow create: if isAuthenticated() && isValidMeeting(request.resource.data) && (request.resource.data.ownerId == request.auth.uid || isAdmin());
+      allow update: if isDocOwner() && isValidMeeting(request.resource.data) && request.resource.data.ownerId == resource.data.ownerId;
+      allow delete: if isDocOwner() || isAdmin();
+
+      match /messages/{messageId} {
+        allow read: if isDocOwner() || isAdmin();
+        allow create: if isAuthenticated(); // System or owner can create
+        allow update, delete: if isAdmin();
+      }
+
+      match /reports/{reportId} {
+        allow read: if isDocOwner() || isAdmin();
+        allow create: if isAuthenticated();
+        allow update, delete: if isAdmin();
+      }
+    }
+
+    match /users/{userId} {
+      allow read: if isOwner(userId) || isAdmin();
+      allow write: if isAdmin();
+    }
+  }
+}

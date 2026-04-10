@@ -1,0 +1,98 @@
+{
+  "entities": {
+    "Skill": {
+      "title": "Skill",
+      "description": "An AI expert role definition",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "avatar": { "type": "string" },
+        "expertise": { "type": "array", "items": { "type": "string" } },
+        "personality": { "type": "string" },
+        "prompt": { "type": "string" },
+        "signature": {
+          "type": "object",
+          "properties": {
+            "style": { "type": "string" }
+          }
+        },
+        "ownerId": { "type": "string" },
+        "isDefault": { "type": "boolean" }
+      },
+      "required": ["name", "avatar", "expertise", "personality", "prompt"]
+    },
+    "Meeting": {
+      "title": "Meeting",
+      "description": "A roundtable discussion session",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "topic": { "type": "string" },
+        "sourceData": { "type": "string" },
+        "rounds": { "type": "integer" },
+        "goalType": { "type": "string", "enum": ["consensus", "exploration", "brainstorming"] },
+        "status": { "type": "string", "enum": ["pending", "running", "completed", "failed"] },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "ownerId": { "type": "string" },
+        "skillIds": { "type": "array", "items": { "type": "string" } },
+        "currentRound": { "type": "integer" },
+        "currentPhase": { "type": "string" },
+        "totalInputTokens": { "type": "integer" },
+        "totalOutputTokens": { "type": "integer" },
+        "durationSeconds": { "type": "integer" },
+        "startTime": { "type": "string", "format": "date-time" },
+        "endTime": { "type": "string", "format": "date-time" }
+      },
+      "required": ["topic", "rounds", "goalType", "status", "skillIds"]
+    },
+    "Message": {
+      "title": "Message",
+      "description": "A single contribution from a Skill in a meeting",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "meetingId": { "type": "string" },
+        "skillId": { "type": "string" },
+        "skillName": { "type": "string" },
+        "skillAvatar": { "type": "string" },
+        "round": { "type": "integer" },
+        "phase": { "type": "string" },
+        "content": { "type": "string" },
+        "signature": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["meetingId", "skillId", "content", "createdAt"]
+    },
+    "Report": {
+      "title": "Report",
+      "description": "The final summary report of a meeting",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "meetingId": { "type": "string" },
+        "content": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["meetingId", "content", "createdAt"]
+    }
+  },
+  "firestore": {
+    "/skills/{skillId}": {
+      "schema": "Skill",
+      "description": "Collection of AI skills"
+    },
+    "/meetings/{meetingId}": {
+      "schema": "Meeting",
+      "description": "Collection of meetings"
+    },
+    "/meetings/{meetingId}/messages/{messageId}": {
+      "schema": "Message",
+      "description": "Subcollection of messages for a meeting"
+    },
+    "/meetings/{meetingId}/reports/{reportId}": {
+      "schema": "Report",
+      "description": "Subcollection of reports for a meeting (usually one)"
+    }
+  }
+}

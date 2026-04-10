@@ -1,8 +1,6 @@
-import Anthropic from '@anthropic-ai/sdk';
+import { streamChat } from './ai-router';
 import { Skill, Meeting, MeetingMessage, DiscussionEvent, DiscussionPhase, MeetingReport } from './types';
 import { v4 as uuidv4 } from 'uuid';
-
-const client = new Anthropic();
 
 function buildSkillContext(skill: Skill): string {
   let context = `你現在是 ${skill.name}。\n你的背景：${skill.personality}\n你的專長：${skill.expertise.join('、')}`;
@@ -119,30 +117,23 @@ export async function* runDiscussion(
     };
 
     let fullContent = '';
-    const stream = client.messages.stream({
-      model: 'claude-sonnet-4-20250514',
-      max_tokens: 1024,
-      system: systemPrompt,
-      messages: [{ role: 'user', content: userPrompt }],
-    });
+    const aiStream = await streamChat('opening', systemPrompt, userPrompt, 1024);
 
-    for await (const event of stream) {
-      if (event.type === 'content_block_delta' && event.delta.type === 'text_delta') {
-        fullContent += event.delta.text;
+    for await (const chunk of aiStream.stream) {
+      if (chunk.type === 'text' && chunk.text) {
+        fullContent += chunk.text;
         yield {
           type: 'message_delta',
           skillId: skill.id,
-          content: event.delta.text,
+          content: chunk.text,
         };
       }
     }
 
     // Track token usage
-    const finalMsg = await stream.finalMessage();
-    if (finalMsg.usage) {
-      totalInputTokens += finalMsg.usage.input_tokens || 0;
-      totalOutputTokens += finalMsg.usage.output_tokens || 0;
-    }
+    const usage = await aiStream.getUsage();
+    totalInputTokens += usage.inputTokens;
+    totalOutputTokens += usage.outputTokens;
 
     const msg: MeetingMessage = {
       id: msgId,
@@ -175,30 +166,23 @@ export async function* runDiscussion(
       };
 
       let fullContent = '';
-      const stream = client.messages.stream({
-        model: 'claude-sonnet-4-20250514',
-        max_tokens: 1024,
-        system: systemPrompt,
-        messages: [{ role: 'user', content: userPrompt }],
-      });
+      const aiStream = await streamChat('discussion', systemPrompt, userPrompt, 1024);
 
-      for await (const event of stream) {
-        if (event.type === 'content_block_delta' && event.delta.type === 'text_delta') {
-          fullContent += event.delta.text;
+      for await (const chunk of aiStream.stream) {
+        if (chunk.type === 'text' && chunk.text) {
+          fullContent += chunk.text;
           yield {
             type: 'message_delta',
             skillId: skill.id,
-            content: event.delta.text,
+            content: chunk.text,
           };
         }
       }
 
       // Track token usage
-      const finalMsg = await stream.finalMessage();
-      if (finalMsg.usage) {
-        totalInputTokens += finalMsg.usage.input_tokens || 0;
-        totalOutputTokens += finalMsg.usage.output_tokens || 0;
-      }
+      const usage = await aiStream.getUsage();
+      totalInputTokens += usage.inputTokens;
+      totalOutputTokens += usage.outputTokens;
 
       const msg: MeetingMessage = {
         id: msgId,
@@ -228,30 +212,28 @@ export async function* runDiscussion(
     skillAvatar: '🏛️',
   };
 
-  const summaryStream = client.messages.stream({
-    model: 'claude-sonnet-4-20250514',
-    max_tokens: 2048,
-    system: '你是一位專業的會議主持人，負責彙整討論結果並產出結構化報告。請用繁體中文回答。',
-    messages: [{ role: 'user', content: summaryPrompt }],
-  });
+  const summaryAiStream = await streamChat(
+    'summary',
+    '你是一位專業的會議主持人，負責彙整討論結果並產出結構化報告。請用繁體中文回答。',
+    summaryPrompt,
+    2048,
+  );
 
-  for await (const event of summaryStream) {
-    if (event.type === 'content_block_delta' && event.delta.type === 'text_delta') {
-      summaryContent += event.delta.text;
+  for await (const chunk of summaryAiStream.stream) {
+    if (chunk.type === 'text' && chunk.text) {
+      summaryContent += chunk.text;
       yield {
         type: 'message_delta',
         skillId: 'system',
-        content: event.delta.text,
+        content: chunk.text,
       };
     }
   }
 
   // Track token usage from summary stream
-  const summaryFinalMsg = await summaryStream.finalMessage();
-  if (summaryFinalMsg.usage) {
-    totalInputTokens += summaryFinalMsg.usage.input_tokens || 0;
-    totalOutputTokens += summaryFinalMsg.usage.output_tokens || 0;
-  }
+  const summaryUsage = await summaryAiStream.getUsage();
+  totalInputTokens += summaryUsage.inputTokens;
+  totalOutputTokens += summaryUsage.outputTokens;
 
   yield { type: 'message_end', skillId: 'system' };
 

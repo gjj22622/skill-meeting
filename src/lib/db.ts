@@ -90,6 +90,20 @@ function initSchema(db: Database.Database) {
     CREATE INDEX IF NOT EXISTS idx_meetings_deleted ON meetings(deleted_at);
     CREATE INDEX IF NOT EXISTS idx_custom_skills_user ON custom_skills(user_id);
     CREATE INDEX IF NOT EXISTS idx_audit_log_created ON audit_log(created_at);
+
+    CREATE TABLE IF NOT EXISTS api_usage (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      provider TEXT NOT NULL,
+      model TEXT NOT NULL,
+      key_index INTEGER NOT NULL DEFAULT 0,
+      input_tokens INTEGER NOT NULL DEFAULT 0,
+      output_tokens INTEGER NOT NULL DEFAULT 0,
+      meeting_id TEXT,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_api_usage_created ON api_usage(created_at);
+    CREATE INDEX IF NOT EXISTS idx_api_usage_key ON api_usage(provider, key_index);
   `);
 
   // Add columns for token tracking and duration (safe to run multiple times)
@@ -130,6 +144,47 @@ function initSchema(db: Database.Database) {
     });
     tx();
   }
+}
+
+// ── API 用量記錄 ──
+
+export function recordApiUsage(
+  provider: string,
+  model: string,
+  keyIndex: number,
+  inputTokens: number,
+  outputTokens: number,
+  meetingId?: string,
+) {
+  const db = getDb();
+  db.prepare(
+    `INSERT INTO api_usage (provider, model, key_index, input_tokens, output_tokens, meeting_id)
+     VALUES (?, ?, ?, ?, ?, ?)`
+  ).run(provider, model, keyIndex, inputTokens, outputTokens, meetingId || null);
+}
+
+export interface DailyKeyUsage {
+  key_index: number;
+  total_input_tokens: number;
+  total_output_tokens: number;
+  total_requests: number;
+}
+
+export function getDailyApiUsage(): DailyKeyUsage[] {
+  const db = getDb();
+  const rows = db.prepare(
+    `SELECT
+       key_index,
+       SUM(input_tokens) as total_input_tokens,
+       SUM(output_tokens) as total_output_tokens,
+       COUNT(*) as total_requests
+     FROM api_usage
+     WHERE provider = 'gemini'
+       AND date(created_at) = date('now')
+     GROUP BY key_index
+     ORDER BY key_index`
+  ).all() as DailyKeyUsage[];
+  return rows;
 }
 
 // Helper: create admin user if none exists
