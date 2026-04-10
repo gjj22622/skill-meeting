@@ -28,6 +28,8 @@ export default function MeetingRoom({ meeting, skills }: MeetingRoomProps) {
   const [currentRound, setCurrentRound] = useState(0);
   const [activeSpeaker, setActiveSpeaker] = useState<string | null>(null);
   const [report, setReport] = useState<MeetingReport | null>(null);
+  const [tokenUsage, setTokenUsage] = useState<{ input: number; output: number; total: number } | null>(null);
+  const [durationMs, setDurationMs] = useState<number | null>(null);
   const [isRunning, setIsRunning] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const chatEndRef = useRef<HTMLDivElement>(null);
@@ -145,6 +147,8 @@ export default function MeetingRoom({ meeting, skills }: MeetingRoomProps) {
       case 'report':
         if (event.report) {
           setReport(event.report);
+          if (event.tokenUsage) setTokenUsage(event.tokenUsage);
+          if (event.durationMs) setDurationMs(event.durationMs);
           // 儲存完成的會議到 localStorage
           const completedMeeting: Meeting = {
             ...meeting,
@@ -264,6 +268,54 @@ export default function MeetingRoom({ meeting, skills }: MeetingRoomProps) {
       {report && (
         <div style={{ marginTop: '2rem' }}>
           <ReportViewer report={report} />
+        </div>
+      )}
+
+      {/* Token Usage Summary */}
+      {report && tokenUsage && (
+        <div
+          className="card"
+          style={{
+            marginTop: '1.5rem',
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))',
+            gap: '1rem',
+          }}
+        >
+          <div>
+            <p style={{ color: 'var(--text-secondary)', fontSize: '0.8rem', margin: '0 0 0.25rem' }}>
+              輸入 Tokens
+            </p>
+            <p style={{ fontSize: '1.25rem', fontWeight: 700, margin: 0, color: 'var(--accent)' }}>
+              {tokenUsage.input.toLocaleString()}
+            </p>
+          </div>
+          <div>
+            <p style={{ color: 'var(--text-secondary)', fontSize: '0.8rem', margin: '0 0 0.25rem' }}>
+              輸出 Tokens
+            </p>
+            <p style={{ fontSize: '1.25rem', fontWeight: 700, margin: 0, color: 'var(--accent)' }}>
+              {tokenUsage.output.toLocaleString()}
+            </p>
+          </div>
+          <div>
+            <p style={{ color: 'var(--text-secondary)', fontSize: '0.8rem', margin: '0 0 0.25rem' }}>
+              總計 Tokens
+            </p>
+            <p style={{ fontSize: '1.25rem', fontWeight: 700, margin: 0, color: 'var(--warning)' }}>
+              {tokenUsage.total.toLocaleString()}
+            </p>
+          </div>
+          {durationMs && (
+            <div>
+              <p style={{ color: 'var(--text-secondary)', fontSize: '0.8rem', margin: '0 0 0.25rem' }}>
+                耗時
+              </p>
+              <p style={{ fontSize: '1.25rem', fontWeight: 700, margin: 0 }}>
+                {(durationMs / 1000).toFixed(1)}s
+              </p>
+            </div>
+          )}
         </div>
       )}
     </div>

@@ -286,20 +286,18 @@ export async function streamChat(
           : '';
         console.error(`[ai-router] ${phase} → ${modelConfig.provider}:${modelConfig.model}${keyLabel} ${modelConfig.label ? `(${modelConfig.label})` : ''}`);
 
-        // 用量記錄：在 usage resolve 後自動寫入 DB
+        // 用量記錄：每次呼叫都寫入 DB（即使 token 為 0，也記錄 request 次數）
         const trackedUsagePromise = usagePromise.then((usage) => {
-          if (usage.inputTokens > 0 || usage.outputTokens > 0) {
-            try {
-              recordApiUsage(
-                modelConfig.provider,
-                modelConfig.model,
-                keyIndex,
-                usage.inputTokens,
-                usage.outputTokens,
-              );
-            } catch (e) {
-              console.error('[ai-router] 記錄 API 用量失敗:', e);
-            }
+          try {
+            recordApiUsage(
+              modelConfig.provider,
+              modelConfig.model,
+              keyIndex,
+              usage.inputTokens,
+              usage.outputTokens,
+            );
+          } catch (e) {
+            console.error('[ai-router] 記錄 API 用量失敗:', e);
           }
           return usage;
         });
