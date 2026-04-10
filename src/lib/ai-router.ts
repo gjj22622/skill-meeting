@@ -245,6 +245,7 @@ export async function streamChat(
           model: modelConfig.model,
           max_tokens: maxTokens,
           stream: true,
+          stream_options: { include_usage: true },
           messages: [
             { role: 'system', content: systemPrompt },
             { role: 'user', content: userPrompt },
