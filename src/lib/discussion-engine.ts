@@ -117,7 +117,7 @@ export async function* runDiscussion(
     };
 
     let fullContent = '';
-    const aiStream = await streamChat('opening', systemPrompt, userPrompt, 1024);
+    const aiStream = await streamChat('opening', systemPrompt, userPrompt, 4096);
 
     for await (const chunk of aiStream.stream) {
       if (chunk.type === 'text' && chunk.text) {
@@ -166,7 +166,7 @@ export async function* runDiscussion(
       };
 
       let fullContent = '';
-      const aiStream = await streamChat('discussion', systemPrompt, userPrompt, 1024);
+      const aiStream = await streamChat('discussion', systemPrompt, userPrompt, 4096);
 
       for await (const chunk of aiStream.stream) {
         if (chunk.type === 'text' && chunk.text) {
@@ -216,7 +216,7 @@ export async function* runDiscussion(
     'summary',
     '你是一位專業的會議主持人，負責彙整討論結果並產出結構化報告。請用繁體中文回答。',
     summaryPrompt,
-    2048,
+    8192,
   );
 
   for await (const chunk of summaryAiStream.stream) {

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getDailyApiUsage } from '@/lib/db'
 import { requireAdmin, AuthError } from '@/lib/auth'
 import { getKeyPoolStatus } from '@/lib/ai-router'
+import { calculateCost, PROVIDER_DEFAULT_MODEL } from '@/lib/pricing'
 
 export async function GET(request: NextRequest) {
   try {
@@ -69,9 +70,19 @@ export async function GET(request: NextRequest) {
       })
     }
 
+    // 計算各 key 和總計花費
+    let totalCost = 0
+    const keysWithCost = keys.map(k => {
+      const model = PROVIDER_DEFAULT_MODEL[k.provider] || 'gemini-2.5-flash'
+      const cost = calculateCost(k.total_input_tokens, k.total_output_tokens, model)
+      totalCost += cost
+      return { ...k, estimated_cost: cost }
+    })
+
     return NextResponse.json({
-      keys,
+      keys: keysWithCost,
       pool: { gemini: geminiPool },
+      total_cost: totalCost,
     })
   } catch (e) {
     if (e instanceof AuthError) {

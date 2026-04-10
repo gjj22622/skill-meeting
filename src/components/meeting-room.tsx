@@ -306,7 +306,7 @@ export default function MeetingRoom({ meeting, skills }: MeetingRoomProps) {
         </div>
       )}
 
-      {/* Token Usage Summary */}
+      {/* Token Usage & Cost Summary */}
       {report && tokenUsage && (
         <div
           className="card"
@@ -339,6 +339,17 @@ export default function MeetingRoom({ meeting, skills }: MeetingRoomProps) {
             </p>
             <p style={{ fontSize: '1.25rem', fontWeight: 700, margin: 0, color: 'var(--warning)' }}>
               {tokenUsage.total.toLocaleString()}
+            </p>
+          </div>
+          <div>
+            <p style={{ color: 'var(--text-secondary)', fontSize: '0.8rem', margin: '0 0 0.25rem' }}>
+              預估花費
+            </p>
+            <p style={{ fontSize: '1.25rem', fontWeight: 700, margin: 0, color: 'var(--success)' }}>
+              ${((tokenUsage.input / 1_000_000) * 0.15 + (tokenUsage.output / 1_000_000) * 0.60).toFixed(4)}
+            </p>
+            <p style={{ color: 'var(--text-secondary)', fontSize: '0.65rem', margin: '0.15rem 0 0' }}>
+              Gemini 2.5 Flash: $0.15/M in · $0.60/M out
             </p>
           </div>
           {durationMs && (

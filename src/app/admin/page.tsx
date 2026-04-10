@@ -66,10 +66,12 @@ interface ApiKeyUsage {
   total_requests: number;
   daily_token_limit: number | null;
   daily_request_limit: number | null;
+  estimated_cost: number;
 }
 
 interface ApiUsageData {
   keys: ApiKeyUsage[];
+  total_cost: number;
   pool: { gemini: { total: number; available: number } };
 }
 
@@ -118,9 +120,23 @@ function ApiUsageChart() {
       }}
     >
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-        <h2 style={{ fontSize: '1.25rem', fontWeight: 600, margin: 0 }}>
-          API 使用狀況
-        </h2>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+          <h2 style={{ fontSize: '1.25rem', fontWeight: 600, margin: 0 }}>
+            API 使用狀況
+          </h2>
+          {data.total_cost > 0 && (
+            <span style={{
+              fontSize: '0.9rem',
+              fontWeight: 700,
+              color: data.total_cost > 1 ? '#ef4444' : data.total_cost > 0.1 ? '#eab308' : '#22c55e',
+              background: 'var(--bg-primary, #1a1a2e)',
+              padding: '0.25rem 0.75rem',
+              borderRadius: '9999px',
+            }}>
+              今日花費 ${data.total_cost.toFixed(4)}
+            </span>
+          )}
+        </div>
         <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
           {data.keys.length} 個 API Key · Gemini {geminiPool.available}/{geminiPool.total} 可用 · 每 30 秒刷新
         </span>
@@ -158,9 +174,12 @@ function ApiUsageChart() {
                   <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
                     {hasLimit
                       ? `${totalTokens.toLocaleString()} / ${key.daily_token_limit!.toLocaleString()} tokens (${percentage.toFixed(1)}%)`
-                      : `${totalTokens.toLocaleString()} tokens (按用量計費)`
+                      : `${totalTokens.toLocaleString()} tokens`
                     }
                     {' · '}{key.total_requests} 次請求
+                    {key.estimated_cost > 0 && (
+                      <span style={{ color: 'var(--warning)', fontWeight: 600 }}> · ${key.estimated_cost.toFixed(4)}</span>
+                    )}
                   </span>
                 </div>
                 <div
